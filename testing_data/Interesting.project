@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project version="0.8">
+  <Resources>
+    <!-- CEGUI resource paths -->
+  </Resources>
+
+  <Items>
+    <Folder name="TestingFolder">
+        <File path="Font.font" />
+    </Folder>
+    <File name="something.test" />
+  </Items>
+</Project>

@@ -164,3 +164,6 @@ class MessageTabbedEditor(TabbedEditor):
         
         self.message = message
         self.tabWidget = QLabel(self.message)
+        
+    def hasChanges(self):
+        return False
