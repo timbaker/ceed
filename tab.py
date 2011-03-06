@@ -19,18 +19,22 @@
 ##
 # This module contains interfaces needed to run editors tabs (multi-file editing)
 
+import os
+
 ##
 # This is the base class for a class that takes a file and allows manipulation
 # with it. It occupies exactly 1 tab space.
 class TabbedEditor(object):
-    def __init__(self, fileName):
+    def __init__(self, filePath):
         self.initialised = False
         self.active = False
         
-        self.fileName = fileName
+        self.filePath = filePath
         
         self.tabWidget = None
-        self.tabLabel = self.fileName
+        self.tabLabel = os.path.basename(self.filePath)
+        
+        self.treeItem = None
     
     ##
     # This method loads everything up so this editor is ready to be switched to
@@ -41,7 +45,7 @@ class TabbedEditor(object):
         self.mainWindow = mainWindow
         self.tabWidget.tabbedEditor = self
                 
-        mainWindow.tabs.addTab(self.tabWidget, self.tabLabel)
+        self.mainWindow.tabs.addTab(self.tabWidget, self.tabLabel)
     
         # we have to subscribe to the QTabWidget's signals so we know when
         # tabs are activated/deactivated and when to close them
@@ -68,6 +72,9 @@ class TabbedEditor(object):
             wdt = self.mainWindow.tabs.widget(i)
         
         assert(tabRemoved)
+        
+        if self.treeItem:
+            self.treeItem.item.openedTabEditor = None
         
         self.initialised = False
     
@@ -98,6 +105,12 @@ class TabbedEditor(object):
         
         if self.mainWindow.activeEditor == self:
             self.mainWindow.activeEditor = None
+    
+    ##
+    # Makes this tab editor current
+    # (this should automatically handle the respective deactivate and activate calls)        
+    def makeCurrent(self):
+        self.mainWindow.tabs.setCurrentWidget(self.tabWidget)
     
     ##
     # Checks whether this TabbedEditor
@@ -137,15 +150,15 @@ class TabbedEditor(object):
 class TabbedEditorFactory(object):
     ##
     # This checks whether instance created by this factory can edit given file
-    def canEditFile(self, fileName):
+    def canEditFile(self, filePath):
         return False
 
     ##
     # Creates the respective TabbedEditor instance
     #
-    # This should only be called with a fileName the factory reported
+    # This should only be called with a filePath the factory reported
     # as editable by the instances
-    def create(self, fileName):
+    def create(self, filePath):
         return None
         
     # note: destroy doesn't really make sense as python is reference counted
@@ -157,10 +170,10 @@ class TabbedEditorFactory(object):
 #
 # This is for internal use only so there is no factory for this editor
 class MessageTabbedEditor(TabbedEditor):
-    def __init__(self, fileName, message):
+    def __init__(self, filePath, message):
         from PySide.QtGui import QLabel
         
-        super(MessageTabbedEditor, self).__init__(fileName)
+        super(MessageTabbedEditor, self).__init__(filePath)
         
         self.message = message
         self.tabWidget = QLabel(self.message)

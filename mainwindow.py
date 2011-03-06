@@ -19,6 +19,9 @@
 from PySide.QtGui import *
 import ui.mainwindow
 
+# the various editor imports
+import texteditor
+
 import project
 import tab
 
@@ -37,56 +40,87 @@ class MainWindow(QMainWindow):
         self.tabs.currentChanged.connect(self.slot_currentTabChanged)
         self.tabs.tabCloseRequested.connect(self.slot_tabCloseRequested)
         
+        self.tabEditors = []
+        
         self.projectManagement = self.findChild(QDockWidget, "projectManagement")
         self.projectFiles = self.projectManagement.findChild(QTreeWidget, "projectFiles")
         
         self.connectActions()
+        self.connectSignals()
         
-        self.test = tab.MessageTabbedEditor("Test.file", "Test test test")
-        self.test.initialise(self)
-        
-        self.test2 = tab.MessageTabbedEditor("Test2.file", "Test22 test test")
-        self.test2.initialise(self)
-        
-        self.test3 = tab.MessageTabbedEditor("Test3.file", "Test333 test test")
-        self.test3.initialise(self)
+        self.registerEditorFactories()
     
     def openProject(self, path):
         assert(not self.project)
         
         self.project = project.Project()
         self.project.load(path)
+        self.project.syncProjectTree(self.projectFiles)
         
-        # we can enable close project action now since we have one opened
+        # project has been opened
+        # enable the project management tree
+        self.projectFiles.setEnabled(True)        
+        
+        # and enable respective actions
+        self.saveProjectAction.setEnabled(True)
         self.closeProjectAction.setEnabled(True)
         
     def closeProject(self):
+        self.project.unload()
+        self.projectFiles.clear()
         self.project = None
+        
         # no project is opened anymore
+        self.projectFiles.setEnabled(False)
+        
+        self.saveProjectAction.setEnabled(False)
         self.closeProjectAction.setEnabled(False)
+        
+    def saveProject(self):
+        self.project.save()
+    
+    def saveProjectAs(self, newPath):
+        self.project.save(newPath)
     
     def registerEditorFactory(self, factory):
         self.editorFactories.append(factory)
         
     def unregisterEditorFactory(self, factory):
         self.editorFactories.remove(factory)
+    
+    def registerEditorFactories(self):
+        self.registerEditorFactory(texteditor.TextTabbedEditorFactory())
         
-    def createEditorForFile(self, fileName):
+    def createEditorForFile(self, filePath):
+        absolutePath = self.project.getAbsolutePathOf(filePath)
+        
+        ret = None
         for factory in self.editorFactories:
-            if factory.canEditFile(fileName):
-                return factory.create(fileName)
+            if factory.canEditFile(absolutePath):
+                ret = factory.create(absolutePath)
+                break
         
-        # at this point, no registered tabbed editor factory wanted to accept
-        # the file, so we create MessageTabbedEditor that will simply tell the
-        # user that given file can't be edited
+        # at this point if ret is None, no registered tabbed editor factory wanted
+        # to accept the file, so we create MessageTabbedEditor that will simply
+        # tell the user that given file can't be edited
         #
         # IMO this is a reasonable compromise and plays well with the rest of 
         # the editor without introducing exceptions, etc...
+        if not ret:
+            ret = tab.MessageTabbedEditor(absolutePath,
+                   "No included tabbed editor was able to accept '%s'" % (filePath))
         
-        return tab.MessageTabbedEditor(fileName,
-               "No included tabbed editor was able to accept '%s'" % (fileName))    
+        ret.initialise(self)
+        self.tabEditors.append(ret)
+        
+        return ret    
 
     def connectActions(self):
+        self.saveProjectAction = self.findChild(QAction, "actionSaveProject")
+        self.saveProjectAction.triggered.connect(self.slot_saveProject)
+        # when this starts up, no project is opened, hence you can't save the "no project"
+        self.saveProjectAction.setEnabled(False)
+        
         self.openProjectAction = self.findChild(QAction, "actionOpenProject")
         self.openProjectAction.triggered.connect(self.slot_openProject)
         
@@ -94,15 +128,16 @@ class MainWindow(QMainWindow):
         self.closeProjectAction.triggered.connect(self.slot_closeProject)
         # when this starts up, no project is opened, hence you can't close the current project
         self.closeProjectAction.setEnabled(False)
-    
-    def slot_currentTabChanged(self, index):
-        wdt = self.tabs.widget(index)
         
-        if self.activeEditor:
-            self.activeEditor.deactivate()
-
-        if wdt:
-            wdt.tabbedEditor.activate()
+        self.saveAction = self.findChild(QAction, "actionSave")
+        self.saveAction.setEnabled(False)
+        self.saveAllAction = self.findChild(QAction, "actionSaveAll")
+        self.saveAllAction.setEnabled(False)
+        self.closeAction = self.findChild(QAction, "actionClose")
+        self.closeAction.setEnabled(False)
+        
+    def connectSignals(self):
+        self.projectFiles.itemDoubleClicked.connect(self.slot_openFileTab)
     
     def closeEditorTab(self, editor):
         if not editor.hasChanges():
@@ -115,7 +150,7 @@ class MainWindow(QMainWindow):
                                           "Unsaved changes!",
                                           "There are unsaved changes in '%s'. "
                                           "Do you want to save them? "
-                                          "(Pressing Discard will discard the changes!)" % (editor.fileName),
+                                          "(Pressing Discard will discard the changes!)" % (editor.filePath),
                                           QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
                                           QMessageBox.Save)
             
@@ -123,20 +158,19 @@ class MainWindow(QMainWindow):
                 # lets save changes and then kill the editor (This is the default action)
                 editor.saveChanges()
                 editor.finalise()
+                self.tabEditors.remove(editor)
                 
             elif result == QMessageBox.Discard:
                 # changes will be discarded
                 # note: we don't have to call editor.discardChanges here
                 
                 editor.finalise()
+                self.tabEditors.remove(editor)
             
             # don't do anything if user selected 'Cancel'
-    
-    def slot_tabCloseRequested(self, index):
-        wdt = self.tabs.widget(index)
-        editor = wdt.tabbedEditor
         
-        self.closeEditorTab(editor)
+    def slot_saveProject(self):
+        self.saveProject()
     
     def slot_openProject(self):
         if self.project:
@@ -182,3 +216,42 @@ class MainWindow(QMainWindow):
                 return
             
         self.closeProject()
+    
+    def slot_openFileTab(self, treeItem, column):
+        if (column != 0) or (not treeItem) or (not treeItem.item.type == "file"):
+            # silently ignore invalid double click
+            return
+        
+        if treeItem.item.openedTabEditor:
+            treeItem.item.openedTabEditor.makeCurrent()
+            return
+        
+        editor = self.createEditorForFile(treeItem.item.path)
+        editor.makeCurrent()
+        
+        treeItem.item.openedTabEditor = editor
+        editor.treeItem = treeItem
+        
+    def slot_currentTabChanged(self, index):
+        wdt = self.tabs.widget(index)
+        
+        if self.activeEditor:
+            self.activeEditor.deactivate()
+
+        if wdt:
+            wdt.tabbedEditor.activate()
+            
+            self.saveAction.setEnabled(True)
+            self.saveAllAction.setEnabled(True)
+            self.closeAction.setEnabled(True)
+        else:
+            # None is selected right now, lets disable Save and Close actions
+            self.saveAction.setEnabled(False)
+            self.saveAllAction.setEnabled(False)
+            self.closeAction.setEnabled(False)
+    
+    def slot_tabCloseRequested(self, index):
+        wdt = self.tabs.widget(index)
+        editor = wdt.tabbedEditor
+        
+        self.closeEditorTab(editor)

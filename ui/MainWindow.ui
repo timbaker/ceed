@@ -82,6 +82,7 @@
     <addaction name="actionClose"/>
     <addaction name="separator"/>
     <addaction name="menuRecentProjects"/>
+    <addaction name="actionSaveProject"/>
     <addaction name="actionNewProject"/>
     <addaction name="actionOpenProject"/>
     <addaction name="actionCloseProject"/>
@@ -168,6 +169,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionSaveProject"/>
+   <addaction name="separator"/>
    <addaction name="actionSave"/>
    <addaction name="actionSaveAll"/>
    <addaction name="separator"/>
@@ -298,6 +301,15 @@
   <action name="actionNoRecentProjects">
    <property name="text">
     <string>&lt;no recent projects&gt;</string>
+   </property>
+  </action>
+  <action name="actionSaveProject">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/actions/save_project.png</normaloff>icons/actions/save_project.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save Project</string>
    </property>
   </action>
  </widget>
