@@ -186,6 +186,7 @@ class Project(object):
     def __init__(self):
         self.rootItems = []
         self.projectFilePath = ""
+        self.baseDir = "./"
         self.changed = True
     
     ##
@@ -194,6 +195,10 @@ class Project(object):
         tree = ElementTree.parse(path)
         
         root = tree.getroot()
+        
+        assert(root.get("version") == "0.8")
+        self.baseDir = root.get("base_dir") if not None else "./"
+        
         items = root.find("Items")
         
         for itemElement in items.findall("Item"):
@@ -215,9 +220,10 @@ class Project(object):
         
         # This CEED is built to conform CEGUI 0.8
         root.set("version", "0.8")
+        root.set("base_dir", self.baseDir)
         
         items = ElementTree.SubElement(root, "Items")
-        2
+        
         for item in self.rootItems:
             items.append(item.saveToElement())
         
@@ -226,14 +232,14 @@ class Project(object):
     
     def hasChanges(self):
         return self.changed
-        
+    
     ##
     # Converts project relative paths to absolute paths
     def getAbsolutePathOf(self, path):
         import os
         
-        # TODO: stub
-        return os.path.join("testing_data", path)
+        absoluteBaseDir = os.path.join(os.path.dirname(self.projectFilePath), self.baseDir)
+        return os.path.normpath(os.path.join(absoluteBaseDir, path))
     
     def syncProjectTree(self, projectTree):
         projectTree.clear()

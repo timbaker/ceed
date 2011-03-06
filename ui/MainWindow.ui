@@ -6,12 +6,24 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>850</width>
-    <height>902</height>
+    <width>813</width>
+    <height>864</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
+  </property>
+  <property name="documentMode">
+   <bool>true</bool>
+  </property>
+  <property name="dockNestingEnabled">
+   <bool>false</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
@@ -59,7 +71,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>850</width>
+     <width>813</width>
      <height>21</height>
     </rect>
    </property>
@@ -112,6 +124,7 @@
      <string>Panels</string>
     </property>
     <addaction name="actionProjectManagementVisible"/>
+    <addaction name="actionFilesystemBrowserVisible"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -134,6 +147,9 @@
        <property name="enabled">
         <bool>false</bool>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
        <property name="animated">
         <bool>true</bool>
        </property>
@@ -141,7 +157,7 @@
         <bool>true</bool>
        </property>
        <property name="headerHidden">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
        <column>
         <property name="text">
@@ -155,7 +171,7 @@
   </widget>
   <widget class="QToolBar" name="globalToolbar">
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Global Toolbar</string>
    </property>
    <property name="iconSize">
     <size>
@@ -179,7 +195,7 @@
   </widget>
   <widget class="QToolBar" name="tabbedEditorToolbar">
    <property name="windowTitle">
-    <string>toolBar_2</string>
+    <string>Current Tabbed Editor Toolbar</string>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
@@ -187,6 +203,48 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+  </widget>
+  <widget class="QDockWidget" name="filesystemBrowser">
+   <property name="windowTitle">
+    <string>Filesystem Browser</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QWidget" name="filesystemButtons" native="true">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QPushButton" name="parentDirectory">
+          <property name="text">
+           <string/>
+          </property>
+          <property name="icon">
+           <iconset>
+            <normaloff>icons/actions/filesystem_parent_directory.png</normaloff>icons/actions/filesystem_parent_directory.png</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>22</width>
+            <height>22</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QListView" name="filesystemView">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <action name="actionQuit">
    <property name="icon">
@@ -312,6 +370,17 @@
     <string>Save Project</string>
    </property>
   </action>
+  <action name="actionFilesystemBrowserVisible">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Filesystem Browser</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+B</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections>
@@ -360,6 +429,38 @@
     <hint type="destinationlabel">
      <x>424</x>
      <y>450</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionFilesystemBrowserVisible</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>filesystemBrowser</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>675</x>
+     <y>681</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>filesystemBrowser</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionFilesystemBrowserVisible</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>675</x>
+     <y>681</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>

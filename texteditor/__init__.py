@@ -20,7 +20,7 @@ from PySide.QtGui import *
 import tab
 
 ##
-# Multi purpose text editor with some rudimentary highlighting
+# Multi purpose text editor
 #
 # TODO: This could get replaced by QScintilla once PySide guys get it to work.
 #       Scintilla would probably be overkill though, I can't imagine anyone
@@ -42,6 +42,10 @@ class TextTabbedEditor(tab.TabbedEditor):
         
         self.tabWidget.setDocument(self.textDocument)
         self.textDocument.setModified(False)
+
+        self.textDocument.setUndoRedoEnabled(True)
+        self.textDocument.undoAvailable.connect(self.slot_undoAvailable)
+        self.textDocument.redoAvailable.connect(self.slot_redoAvailable)
     
     def finalise(self):
         super(TextTabbedEditor, self).finalise()
@@ -51,6 +55,20 @@ class TextTabbedEditor(tab.TabbedEditor):
         
     def hasChanges(self):
         return self.textDocument.isModified()
+    
+    def undo(self):
+        # TODO: For some weird reason this doesn't do anything, could be a PySide bug
+        self.textDocument.undo()
+        
+    def redo(self):
+        # TODO: For some weird reason this doesn't do anything, could be a PySide bug
+        self.textDocument.redo()
+        
+    def slot_undoAvailable(self, available):
+        self.mainWindow.undoAction.setEnabled(available)
+        
+    def slot_redoAvailable(self, available):
+        self.mainWindow.redoAction.setEnabled(available)
 
 class TextTabbedEditorFactory(tab.TabbedEditorFactory):
     def canEditFile(self, filePath):

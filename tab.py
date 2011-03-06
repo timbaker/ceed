@@ -29,12 +29,10 @@ class TabbedEditor(object):
         self.initialised = False
         self.active = False
         
-        self.filePath = filePath
+        self.filePath = os.path.normpath(filePath)
         
         self.tabWidget = None
         self.tabLabel = os.path.basename(self.filePath)
-        
-        self.treeItem = None
     
     ##
     # This method loads everything up so this editor is ready to be switched to
@@ -72,9 +70,6 @@ class TabbedEditor(object):
             wdt = self.mainWindow.tabs.widget(i)
         
         assert(tabRemoved)
-        
-        if self.treeItem:
-            self.treeItem.item.openedTabEditor = None
         
         self.initialised = False
     
@@ -142,6 +137,12 @@ class TabbedEditor(object):
         self.activate()
         
         # the state of the tabbed editor should be valid at this point
+        
+    def undo(self):
+        pass
+        
+    def redo(self):
+        pass
 
 ##
 # Constructs instances of TabbedEditor (multiple instances of one TabbedEditor
@@ -177,6 +178,7 @@ class MessageTabbedEditor(TabbedEditor):
         
         self.message = message
         self.tabWidget = QLabel(self.message)
+        self.tabWidget.setWordWrap(True)
         
     def hasChanges(self):
         return False

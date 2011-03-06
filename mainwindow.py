@@ -19,7 +19,10 @@
 from PySide.QtGui import *
 import ui.mainwindow
 
+import os
+
 # the various editor imports
+import bitmapeditor
 import texteditor
 
 import project
@@ -45,6 +48,13 @@ class MainWindow(QMainWindow):
         self.projectManagement = self.findChild(QDockWidget, "projectManagement")
         self.projectFiles = self.projectManagement.findChild(QTreeWidget, "projectFiles")
         
+        self.filesystemBrowser = self.findChild(QDockWidget, "filesystemBrowser")
+        self.filesystemView = self.filesystemBrowser.findChild(QListView, "filesystemView")
+        self.filesystemModel = QFileSystemModel()
+        self.filesystemView.setModel(self.filesystemModel);
+
+        self.setFilesystemBrowserDirectory(os.path.curdir)
+        
         self.connectActions()
         self.connectSignals()
         
@@ -56,6 +66,7 @@ class MainWindow(QMainWindow):
         self.project = project.Project()
         self.project.load(path)
         self.project.syncProjectTree(self.projectFiles)
+        self.setFilesystemBrowserDirectory(self.project.getAbsolutePathOf(""))
         
         # project has been opened
         # enable the project management tree
@@ -82,6 +93,10 @@ class MainWindow(QMainWindow):
     def saveProjectAs(self, newPath):
         self.project.save(newPath)
     
+    def setFilesystemBrowserDirectory(self, rootDir):
+        self.filesystemModel.setRootPath(rootDir)
+        self.filesystemView.setRootIndex(self.filesystemModel.index(rootDir));
+    
     def registerEditorFactory(self, factory):
         self.editorFactories.append(factory)
         
@@ -89,32 +104,53 @@ class MainWindow(QMainWindow):
         self.editorFactories.remove(factory)
     
     def registerEditorFactories(self):
+        self.registerEditorFactory(bitmapeditor.BitmapTabbedEditorFactory())
         self.registerEditorFactory(texteditor.TextTabbedEditorFactory())
         
-    def createEditorForFile(self, filePath):
-        absolutePath = self.project.getAbsolutePathOf(filePath)
-        
+    def createEditorForFile(self, absolutePath):
         ret = None
-        for factory in self.editorFactories:
-            if factory.canEditFile(absolutePath):
-                ret = factory.create(absolutePath)
-                break
+                
+        filePath = os.path.relpath(absolutePath, self.project.baseDir)        
         
-        # at this point if ret is None, no registered tabbed editor factory wanted
-        # to accept the file, so we create MessageTabbedEditor that will simply
-        # tell the user that given file can't be edited
-        #
-        # IMO this is a reasonable compromise and plays well with the rest of 
-        # the editor without introducing exceptions, etc...
-        if not ret:
+        if not os.path.exists(absolutePath):
             ret = tab.MessageTabbedEditor(absolutePath,
-                   "No included tabbed editor was able to accept '%s'" % (filePath))
+                   "Couldn't find '%s' (project relative path: '%s'), please check that that your project's "
+                   "base directory is set up correctly and that you hadn't deleted "
+                   "the file from your HDD. Consider removing the file from the project." % (absolutePath, filePath))
+        else: 
+            for factory in self.editorFactories:
+                if factory.canEditFile(absolutePath):
+                    ret = factory.create(absolutePath)
+                    break
+            
+            # at this point if ret is None, no registered tabbed editor factory wanted
+            # to accept the file, so we create MessageTabbedEditor that will simply
+            # tell the user that given file can't be edited
+            #
+            # IMO this is a reasonable compromise and plays well with the rest of 
+            # the editor without introducing exceptions, etc...
+            if not ret:
+                ret = tab.MessageTabbedEditor(absolutePath,
+                       "No included tabbed editor was able to accept '%s' (project relative path: '%s'), please "
+                       "check that it's a file CEED supports and that it has the correct extension "
+                       "(CEED enforces proper extensions)" % (absolutePath, filePath))
         
         ret.initialise(self)
         self.tabEditors.append(ret)
         
         return ret    
 
+    def openFileTab(self, absolutePath):
+        absolutePath = os.path.normpath(absolutePath)
+        
+        for tabEditor in self.tabEditors:            
+            if tabEditor.filePath == absolutePath:
+                tabEditor.makeCurrent()
+                return
+                
+        editor = self.createEditorForFile(absolutePath)
+        editor.makeCurrent()
+        
     def connectActions(self):
         self.saveProjectAction = self.findChild(QAction, "actionSaveProject")
         self.saveProjectAction.triggered.connect(self.slot_saveProject)
@@ -136,8 +172,15 @@ class MainWindow(QMainWindow):
         self.closeAction = self.findChild(QAction, "actionClose")
         self.closeAction.setEnabled(False)
         
+        self.undoAction = self.findChild(QAction, "actionUndo")
+        self.undoAction.triggered.connect(self.slot_undo)
+        self.undoAction.setEnabled(False)
+        self.redoAction = self.findChild(QAction, "actionRedo")
+        self.undoAction.triggered.connect(self.slot_redo)
+        self.redoAction.setEnabled(False)
+        
     def connectSignals(self):
-        self.projectFiles.itemDoubleClicked.connect(self.slot_openFileTab)
+        self.projectFiles.itemDoubleClicked.connect(self.slot_openFileFromProject)
     
     def closeEditorTab(self, editor):
         if not editor.hasChanges():
@@ -217,20 +260,12 @@ class MainWindow(QMainWindow):
             
         self.closeProject()
     
-    def slot_openFileTab(self, treeItem, column):
+    def slot_openFileFromProject(self, treeItem, column):
         if (column != 0) or (not treeItem) or (not treeItem.item.type == "file"):
             # silently ignore invalid double click
             return
         
-        if treeItem.item.openedTabEditor:
-            treeItem.item.openedTabEditor.makeCurrent()
-            return
-        
-        editor = self.createEditorForFile(treeItem.item.path)
-        editor.makeCurrent()
-        
-        treeItem.item.openedTabEditor = editor
-        editor.treeItem = treeItem
+        self.openFileTab(self.project.getAbsolutePathOf(treeItem.item.path))
         
     def slot_currentTabChanged(self, index):
         wdt = self.tabs.widget(index)
@@ -238,12 +273,17 @@ class MainWindow(QMainWindow):
         if self.activeEditor:
             self.activeEditor.deactivate()
 
+        # it's the tabbed editor's responsibility to handle these,
+        # we disable them by default
+        self.undoAction.setEnabled(False)
+        self.redoAction.setEnabled(False)
+
         if wdt:
-            wdt.tabbedEditor.activate()
-            
             self.saveAction.setEnabled(True)
             self.saveAllAction.setEnabled(True)
             self.closeAction.setEnabled(True)
+            
+            wdt.tabbedEditor.activate()
         else:
             # None is selected right now, lets disable Save and Close actions
             self.saveAction.setEnabled(False)
@@ -255,3 +295,12 @@ class MainWindow(QMainWindow):
         editor = wdt.tabbedEditor
         
         self.closeEditorTab(editor)
+        
+    def slot_undo(self):
+        if self.activeEditor:
+            self.activeEditor.undo()
+            
+    def slot_redo(self):
+        if self.activeEditor:
+            self.activeEditor.redo()
+    
