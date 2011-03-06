@@ -15,8 +15,8 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
-# PyQt support
-from PyQt4.QtGui import QUndoCommand
+
+from PySide.QtGui import QUndoCommand
 
 class UndoCommand(QUndoCommand):
     pass

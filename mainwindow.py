@@ -16,7 +16,9 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
+from PySide.QtCore import *
 from PySide.QtGui import *
+
 import ui.mainwindow
 
 import os
@@ -26,6 +28,7 @@ import bitmapeditor
 import texteditor
 
 import project
+import filesystembrowser
 import tab
 
 class MainWindow(QMainWindow):
@@ -45,44 +48,77 @@ class MainWindow(QMainWindow):
         
         self.tabEditors = []
         
-        self.projectManagement = self.findChild(QDockWidget, "projectManagement")
-        self.projectFiles = self.projectManagement.findChild(QTreeWidget, "projectFiles")
+        self.projectManager = project.ProjectManager()
+        self.addDockWidget(Qt.RightDockWidgetArea, self.projectManager)
         
-        self.filesystemBrowser = self.findChild(QDockWidget, "filesystemBrowser")
-        self.filesystemView = self.filesystemBrowser.findChild(QListView, "filesystemView")
-        self.filesystemModel = QFileSystemModel()
-        self.filesystemView.setModel(self.filesystemModel);
-
-        self.setFilesystemBrowserDirectory(os.path.curdir)
+        self.fileSystemBrowser = filesystembrowser.FileSystemBrowser()
+        self.addDockWidget(Qt.RightDockWidgetArea, self.fileSystemBrowser)
         
         self.connectActions()
         self.connectSignals()
         
         self.registerEditorFactories()
     
+    def connectActions(self):
+        self.saveProjectAction = self.findChild(QAction, "actionSaveProject")
+        self.saveProjectAction.triggered.connect(self.slot_saveProject)
+        # when this starts up, no project is opened, hence you can't save the "no project"
+        self.saveProjectAction.setEnabled(False)
+        
+        self.openProjectAction = self.findChild(QAction, "actionOpenProject")
+        self.openProjectAction.triggered.connect(self.slot_openProject)
+        
+        self.closeProjectAction = self.findChild(QAction, "actionCloseProject")
+        self.closeProjectAction.triggered.connect(self.slot_closeProject)
+        # when this starts up, no project is opened, hence you can't close the current project
+        self.closeProjectAction.setEnabled(False)
+        
+        self.saveAction = self.findChild(QAction, "actionSave")
+        self.saveAction.setEnabled(False)
+        self.saveAllAction = self.findChild(QAction, "actionSaveAll")
+        self.saveAllAction.setEnabled(False)
+        self.closeAction = self.findChild(QAction, "actionClose")
+        self.closeAction.setEnabled(False)
+        
+        self.undoAction = self.findChild(QAction, "actionUndo")
+        self.undoAction.triggered.connect(self.slot_undo)
+        self.undoAction.setEnabled(False)
+        self.redoAction = self.findChild(QAction, "actionRedo")
+        self.undoAction.triggered.connect(self.slot_redo)
+        self.redoAction.setEnabled(False)
+        
+    def connectSignals(self):
+        self.projectManager.fileOpenRequested.connect(self.slot_openFile)
+        self.findChild(QAction, "actionProjectManagerVisible").toggled.connect(self.projectManager.setVisible)
+        self.projectManager.visibilityChanged.connect(self.findChild(QAction, "actionProjectManagerVisible").setChecked)
+        
+        self.fileSystemBrowser.fileOpenRequested.connect(self.slot_openFile)
+        self.findChild(QAction, "actionFileSystemBrowserVisible").toggled.connect(self.fileSystemBrowser.setVisible)
+        self.fileSystemBrowser.visibilityChanged.connect(self.findChild(QAction, "actionFileSystemBrowserVisible").setChecked)
+        
     def openProject(self, path):
         assert(not self.project)
         
         self.project = project.Project()
         self.project.load(path)
-        self.project.syncProjectTree(self.projectFiles)
-        self.setFilesystemBrowserDirectory(self.project.getAbsolutePathOf(""))
+        self.projectManager.setProject(self.project)
+        self.fileSystemBrowser.setDirectory(self.project.getAbsolutePathOf(""))
         
         # project has been opened
         # enable the project management tree
-        self.projectFiles.setEnabled(True)        
+        #self.projectFiles.setEnabled(True)        
         
         # and enable respective actions
         self.saveProjectAction.setEnabled(True)
         self.closeProjectAction.setEnabled(True)
         
     def closeProject(self):
+        self.projectManager.setProject(None)
         self.project.unload()
-        self.projectFiles.clear()
         self.project = None
         
         # no project is opened anymore
-        self.projectFiles.setEnabled(False)
+        #self.projectFiles.setEnabled(False)
         
         self.saveProjectAction.setEnabled(False)
         self.closeProjectAction.setEnabled(False)
@@ -92,10 +128,6 @@ class MainWindow(QMainWindow):
     
     def saveProjectAs(self, newPath):
         self.project.save(newPath)
-    
-    def setFilesystemBrowserDirectory(self, rootDir):
-        self.filesystemModel.setRootPath(rootDir)
-        self.filesystemView.setRootIndex(self.filesystemModel.index(rootDir));
     
     def registerEditorFactory(self, factory):
         self.editorFactories.append(factory)
@@ -110,7 +142,7 @@ class MainWindow(QMainWindow):
     def createEditorForFile(self, absolutePath):
         ret = None
                 
-        filePath = os.path.relpath(absolutePath, self.project.baseDir)        
+        filePath = os.path.relpath(absolutePath, self.project.baseDirectory) if self.project else "<No project opened>"        
         
         if not os.path.exists(absolutePath):
             ret = tab.MessageTabbedEditor(absolutePath,
@@ -151,41 +183,11 @@ class MainWindow(QMainWindow):
         editor = self.createEditorForFile(absolutePath)
         editor.makeCurrent()
         
-    def connectActions(self):
-        self.saveProjectAction = self.findChild(QAction, "actionSaveProject")
-        self.saveProjectAction.triggered.connect(self.slot_saveProject)
-        # when this starts up, no project is opened, hence you can't save the "no project"
-        self.saveProjectAction.setEnabled(False)
-        
-        self.openProjectAction = self.findChild(QAction, "actionOpenProject")
-        self.openProjectAction.triggered.connect(self.slot_openProject)
-        
-        self.closeProjectAction = self.findChild(QAction, "actionCloseProject")
-        self.closeProjectAction.triggered.connect(self.slot_closeProject)
-        # when this starts up, no project is opened, hence you can't close the current project
-        self.closeProjectAction.setEnabled(False)
-        
-        self.saveAction = self.findChild(QAction, "actionSave")
-        self.saveAction.setEnabled(False)
-        self.saveAllAction = self.findChild(QAction, "actionSaveAll")
-        self.saveAllAction.setEnabled(False)
-        self.closeAction = self.findChild(QAction, "actionClose")
-        self.closeAction.setEnabled(False)
-        
-        self.undoAction = self.findChild(QAction, "actionUndo")
-        self.undoAction.triggered.connect(self.slot_undo)
-        self.undoAction.setEnabled(False)
-        self.redoAction = self.findChild(QAction, "actionRedo")
-        self.undoAction.triggered.connect(self.slot_redo)
-        self.redoAction.setEnabled(False)
-        
-    def connectSignals(self):
-        self.projectFiles.itemDoubleClicked.connect(self.slot_openFileFromProject)
-    
     def closeEditorTab(self, editor):
         if not editor.hasChanges():
             # we can close immediately
             editor.finalise()
+            self.tabEditors.remove(editor)
             
         else:
             # we have changes, lets ask the user whether we should dump them or save them
@@ -260,13 +262,9 @@ class MainWindow(QMainWindow):
             
         self.closeProject()
     
-    def slot_openFileFromProject(self, treeItem, column):
-        if (column != 0) or (not treeItem) or (not treeItem.item.type == "file"):
-            # silently ignore invalid double click
-            return
-        
-        self.openFileTab(self.project.getAbsolutePathOf(treeItem.item.path))
-        
+    def slot_openFile(self, absolutePath):
+        self.openFileTab(absolutePath)
+    
     def slot_currentTabChanged(self, index):
         wdt = self.tabs.widget(index)
         

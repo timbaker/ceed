@@ -16,49 +16,39 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
+from PySide import QtCore
 from PySide.QtGui import *
+
 from xml.etree import ElementTree
+import ui.projectmanager
 
 ##
 # One item in the project
 #
 # This is usually a file or a folder
-class Item(object):
-    def __init__(self, type, project, parent, icon, label):
-        self.type = type
+class Item(QStandardItem):
+    def __init__(self, project, parent, icon, label):
+        super(Item, self).__init__()
         
         self.parent = parent
         self.project = project
         
-        self.icon = icon
-        self.label = label
-        
-        self.treeItem = None
-        self.openedTabEditor = None
+        self.setText(label)        
+        self.setIcon(icon)
+    
+    def type(self):
+        # Qt docs say we have to overload type and return something over QStandardItem.UserType
+        return QStandardItem.UserType + 1
         
     ##
     # Returns path relative to the projects base directory
-    def getProjectPath(self):
+    def getRelativePath(self):
         return self.path
     
     ##
     # Returns absolute path of the file/folder
     def getAbsolutePath(self):
-        return self.project.getAbsolutePathOf(self.getProjectPath())
-    
-    def createTreeItem(self):
-        ret = QTreeWidgetItem()
-        ret.setText(0, self.label)
-        ret.setIcon(0, self.icon)
-        ret.item = self
-        
-        return ret
-    
-    def getTreeItem(self):
-        if not self.treeItem:
-            self.treeItem = self.createTreeItem()
-            
-        return self.treeItem
+        return self.project.getAbsolutePathOf(self.getRelativePath())
     
     @staticmethod
     def loadFromElement(project, parent, element):
@@ -69,10 +59,11 @@ class Item(object):
             item = File(project, parent, element.get("path"))
         elif type == "folder":
             item = Folder(project, parent, element.get("name"))
+            
             subItemElements = element.findall("Item")
             for subItemElement in subItemElements:
                 subItem = Item.loadFromElement(project, item, subItemElement)
-                item.subItems.append(subItem)
+                item.appendRow(subItem)
                 
         else:
             raise Exception("Unknown item type '%s'" % (type))
@@ -126,16 +117,14 @@ class File(Item):
                     fileType = "bitmap"
                     break
         
-        super(File, self).__init__("file", project, parent,
+        super(File, self).__init__(project, parent,
                                    QIcon("icons/project_items/%s.png" % (fileType)),
                                    os.path.basename(path))
         
         self.path = path
     
-    def createTreeItem(self):
-        ret = super(File, self).createTreeItem()
-        
-        return ret
+    def getAbsolutePath(self):
+        return self.project.getAbsolutePathOf(self.path)
                 
     def saveToElement(self):
         ret = super(File, self).saveToElement()
@@ -149,21 +138,11 @@ class Folder(Item):
     ##
     # path is the path relative to project's base dir
     def __init__(self, project, parent, name):
-        super(Folder, self).__init__("folder", project, parent,
+        super(Folder, self).__init__(project, parent,
                                      QIcon("icons/project_items/folder.png"),
                                      name)
         
         self.name = name
-        self.subItems = []
-        
-    def createTreeItem(self):
-        ret = super(Folder, self).createTreeItem()
-        
-        for item in self.subItems:
-            treeItem = item.getTreeItem()
-            ret.addChild(treeItem)
-        
-        return ret
         
     def saveToElement(self):
         ret = super(Folder, self).saveToElement()
@@ -171,9 +150,11 @@ class Folder(Item):
         ret.set("type", "folder")
         ret.set("name", self.name)
         
-        for subItem in self.subItems:
-            subItemElement = subItem.saveToElement()
+        i = 0
+        while i < self.rowCount():
+            subItemElement = self.child(i).saveToElement()
             ret.append(subItemElement)
+            i = i + 1
         
         return ret
 
@@ -182,11 +163,14 @@ class Folder(Item):
 #
 # A project is basically a set of files and folders that are CEGUI related
 # (.font, .imageset, .layout, ...)
-class Project(object):
+class Project(QStandardItemModel):
     def __init__(self):
-        self.rootItems = []
+        super(Project, self).__init__()
+        
+        self.setHorizontalHeaderLabels(["Name"])
+        
         self.projectFilePath = ""
-        self.baseDir = "./"
+        self.baseDirectory = "./"
         self.changed = True
     
     ##
@@ -197,13 +181,15 @@ class Project(object):
         root = tree.getroot()
         
         assert(root.get("version") == "0.8")
-        self.baseDir = root.get("base_dir") if not None else "./"
+        self.baseDirectory = root.get("base_directory")
+        if not self.baseDirectory:
+            self.baseDirectory = "./"
         
         items = root.find("Items")
         
         for itemElement in items.findall("Item"):
             item = Item.loadFromElement(self, None, itemElement)
-            self.rootItems.append(item)
+            self.appendRow(item)
             
         self.changed = False
         self.projectFilePath = path
@@ -220,12 +206,14 @@ class Project(object):
         
         # This CEED is built to conform CEGUI 0.8
         root.set("version", "0.8")
-        root.set("base_dir", self.baseDir)
+        root.set("base_directory", self.baseDirectory)
         
         items = ElementTree.SubElement(root, "Items")
         
-        for item in self.rootItems:
-            items.append(item.saveToElement())
+        i = 0
+        while i < self.rowCount():
+            items.append(self.item(i).saveToElement())
+            i = i + 1
         
         tree = ElementTree.ElementTree(root)
         tree.write(path)
@@ -238,11 +226,32 @@ class Project(object):
     def getAbsolutePathOf(self, path):
         import os
         
-        absoluteBaseDir = os.path.join(os.path.dirname(self.projectFilePath), self.baseDir)
-        return os.path.normpath(os.path.join(absoluteBaseDir, path))
+        absoluteBaseDirectory = os.path.join(os.path.dirname(self.projectFilePath), self.baseDirectory)
+        return os.path.normpath(os.path.join(absoluteBaseDirectory, path))
+
+class ProjectManager(QDockWidget):
+    fileOpenRequested = QtCore.Signal(str)
     
-    def syncProjectTree(self, projectTree):
-        projectTree.clear()
+    def __init__(self):
+        super(ProjectManager, self).__init__()
         
-        for items in self.rootItems:
-            projectTree.addTopLevelItem(items.getTreeItem())
+        self.ui = ui.projectmanager.Ui_ProjectManager()
+        self.ui.setupUi(self)
+        
+        self.view = self.findChild(QTreeView, "view")
+        self.view.doubleClicked.connect(self.slot_itemDoubleClicked)
+        
+        self.setProject(None)
+        
+    def setProject(self, project):
+        self.setEnabled(project is not None)
+        
+        self.view.setModel(project)
+        
+    def slot_itemDoubleClicked(self, modelIndex):
+        if not self.view.model():
+            return
+        
+        item = self.view.model().item(modelIndex.row(), modelIndex.column())
+        if isinstance(item, File): # only react to files, expanding folders is handled by Qt
+            self.fileOpenRequested.emit(item.getAbsolutePath())

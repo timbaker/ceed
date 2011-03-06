@@ -123,8 +123,8 @@
     <property name="title">
      <string>Panels</string>
     </property>
-    <addaction name="actionProjectManagementVisible"/>
-    <addaction name="actionFilesystemBrowserVisible"/>
+    <addaction name="actionProjectManagerVisible"/>
+    <addaction name="actionFileSystemBrowserVisible"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -133,42 +133,6 @@
    <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="projectManagement">
-   <property name="windowTitle">
-    <string>Project Management</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout_2">
-     <item>
-      <widget class="QTreeWidget" name="projectFiles">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="sortingEnabled">
-        <bool>true</bool>
-       </property>
-       <property name="animated">
-        <bool>true</bool>
-       </property>
-       <property name="wordWrap">
-        <bool>true</bool>
-       </property>
-       <property name="headerHidden">
-        <bool>false</bool>
-       </property>
-       <column>
-        <property name="text">
-         <string notr="true">1</string>
-        </property>
-       </column>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
   <widget class="QToolBar" name="globalToolbar">
    <property name="windowTitle">
     <string>Global Toolbar</string>
@@ -203,48 +167,6 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-  </widget>
-  <widget class="QDockWidget" name="filesystemBrowser">
-   <property name="windowTitle">
-    <string>Filesystem Browser</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_2">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <widget class="QWidget" name="filesystemButtons" native="true">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QPushButton" name="parentDirectory">
-          <property name="text">
-           <string/>
-          </property>
-          <property name="icon">
-           <iconset>
-            <normaloff>icons/actions/filesystem_parent_directory.png</normaloff>icons/actions/filesystem_parent_directory.png</iconset>
-          </property>
-          <property name="iconSize">
-           <size>
-            <width>22</width>
-            <height>22</height>
-           </size>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item>
-      <widget class="QListView" name="filesystemView">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
   </widget>
   <action name="actionQuit">
    <property name="icon">
@@ -342,7 +264,7 @@
     <string>Ctrl+Y</string>
    </property>
   </action>
-  <action name="actionProjectManagementVisible">
+  <action name="actionProjectManagerVisible">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -350,7 +272,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Project Management</string>
+    <string>Project Manager</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+P</string>
@@ -370,12 +292,15 @@
     <string>Save Project</string>
    </property>
   </action>
-  <action name="actionFilesystemBrowserVisible">
+  <action name="actionFileSystemBrowserVisible">
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="text">
-    <string>Filesystem Browser</string>
+    <string>File System Browser</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+B</string>
@@ -384,38 +309,6 @@
  </widget>
  <resources/>
  <connections>
-  <connection>
-   <sender>actionProjectManagementVisible</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>projectManagement</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>136</x>
-     <y>361</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>projectManagement</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>actionProjectManagementVisible</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>639</x>
-     <y>361</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>actionQuit</sender>
    <signal>triggered()</signal>
@@ -429,38 +322,6 @@
     <hint type="destinationlabel">
      <x>424</x>
      <y>450</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionFilesystemBrowserVisible</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>filesystemBrowser</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>675</x>
-     <y>681</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>filesystemBrowser</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>actionFilesystemBrowserVisible</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>675</x>
-     <y>681</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
     </hint>
    </hints>
   </connection>
