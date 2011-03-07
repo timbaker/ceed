@@ -49,6 +49,11 @@ class MainWindow(QMainWindow):
         
         # we start CEGUI early and we always start it
         self.ceguiWidget = cegui.CEGUIWidget()
+        self.ceguiWidget.setParent(self.centralWidget())
+        # we don't show the debug widget by default
+        self.ceguiWidget.debugInfo.setVisible(False)
+        self.ceguiWidget.debugInfo.setFloating(True)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.ceguiWidget.debugInfo)
         
         self.tabs = self.centralWidget().findChild(QTabWidget, "tabs")
         self.tabs.currentChanged.connect(self.slot_currentTabChanged)
@@ -96,6 +101,9 @@ class MainWindow(QMainWindow):
         self.redoAction.setEnabled(False)
         
     def connectSignals(self):
+        self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiWidget.debugInfo.setVisible)
+        self.ceguiWidget.debugInfo.visibilityChanged.connect(self.findChild(QAction, "actionCEGUIDebugInfoVisible").setChecked)
+        
         self.projectManager.fileOpenRequested.connect(self.slot_openFile)
         self.findChild(QAction, "actionProjectManagerVisible").toggled.connect(self.projectManager.setVisible)
         self.projectManager.visibilityChanged.connect(self.findChild(QAction, "actionProjectManagerVisible").setChecked)

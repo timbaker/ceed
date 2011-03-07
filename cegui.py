@@ -16,26 +16,75 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
+from PySide.QtGui import QDockWidget, QLineEdit
 from PySide.QtOpenGL import QGLWidget
 
+import ui.ceguidebuginfo
+
 import os.path
+import time
 
 import PyCEGUI
 import PyCEGUIOpenGLRenderer
 
-class QtCEGUILogger(PyCEGUI.Logger):
-    """A simple log message redirector (CEGUI->Qt)."""
-    # This will allow us to view logs in Qt in the future
+
+class CEGUIQtLogger(PyCEGUI.Logger):
+    """Redirects CEGUI log info to CEGUIWidgetInfo"""
+
+    # This is a separate class from CEGUIWidgetInfo because PySide and PyCEGUI
+    # don't like mixing base classes at all
     
-    def __init__(self):
-        super(QtCEGUILogger, self).__init__()
+    def __init__(self, widgetInfo):
+        super(CEGUIQtLogger, self).__init__()
+        
+        self.widgetInfo = widgetInfo
         
     def logEvent(self, message, level):
-        print message.c_str()
-        print level
+        self.widgetInfo.logEvent(message, level)
         
     def setLogFilename(self, name, append):
         pass
+
+class CEGUIDebugInfo(QDockWidget):
+    """A debugging/info widget about the embedded CEGUI instance"""
+    
+    # This will allow us to view logs in Qt in the future
+    
+    def __init__(self, ceguiWidget):
+        super(CEGUIDebugInfo, self).__init__()
+        
+        self.ceguiWidget = ceguiWidget
+        # update FPS and render time very second
+        self.boxUpdateInterval = 1
+        
+        self.ui = ui.ceguidebuginfo.Ui_CEGUIWidgetInfo()
+        self.ui.setupUi(self)
+        
+        self.currentFPSBox = self.findChild(QLineEdit, "currentFPSBox")
+        self.currentRenderTimeBox = self.findChild(QLineEdit, "currentRenderTimeBox")
+        
+        self.errors = 0
+        self.errorsBox = self.findChild(QLineEdit, "errorsBox")
+        
+        self.warnings = 0
+        self.warningsBox = self.findChild(QLineEdit, "warningsBox")
+        
+        self.others = 0
+        self.othersBox = self.findChild(QLineEdit, "othersBox")
+        
+    def logEvent(self, message, level):
+        if level == PyCEGUI.LoggingLevel.Errors:
+            self.errors += 1
+            self.errorsBox.setText(str(self.errors))
+            
+        elif level == PyCEGUI.LoggingLevel.Warnings:
+            self.warnings += 1
+            self.warningsBox.setText(str(self.warnings))
+        else:
+            self.others += 1
+            self.othersBox.setText(str(self.others))
+        
+        print message.c_str()
 
 class CEGUIWidget(QGLWidget):
     """Widget containing and displaying a CEGUI instance via OpenGL"""
@@ -50,7 +99,8 @@ class CEGUIWidget(QGLWidget):
     def __init__(self):
         super(CEGUIWidget, self).__init__()
         
-        self.logger = QtCEGUILogger()
+        self.debugInfo = CEGUIDebugInfo(self)
+        self.logger = CEGUIQtLogger(self.debugInfo)
     
     def __del__(self):
         #PyCEGUIOpenGLRenderer.OpenGLRenderer.destroySystem()
@@ -122,6 +172,8 @@ class CEGUIWidget(QGLWidget):
     def initializeGL(self):
         self.renderer = PyCEGUIOpenGLRenderer.OpenGLRenderer.bootstrapSystem()
         self.system = PyCEGUI.System.getSingleton()
+        self.lastRenderTime = time.time()
+        self.lastBoxUpdateTime = time.time() - self.debugInfo.boxUpdateInterval
         
         self.setDefaultResourceGroups()
         
@@ -135,19 +187,27 @@ class CEGUIWidget(QGLWidget):
         wnd = PyCEGUI.WindowManager.getSingleton().createWindow("TaharezLook/FrameWindow")
         wnd.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(0.5, 0), PyCEGUI.UDim(0.5, 0)))
         root.addChild(wnd)
-        
-        cmb = PyCEGUI.WindowManager.getSingleton().createWindow("WindowsLook/Combobox")
-        cmb.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(1, 0), PyCEGUI.UDim(1, 0)))
-        wnd.addChild(cmb)
-        
-        self.item = PyCEGUI.ListboxTextItem("Something Something")
-        cmb.addItem(self.item)        
     
     def resizeGL(self, width, height):
         self.system.notifyDisplaySizeChanged(PyCEGUI.Sizef(width, height))
     
     def paintGL(self):
+        renderStartTime = time.time()
         self.system.renderGUI()
+        afterRenderTime = time.time()
+        renderTime = afterRenderTime - renderStartTime
+        
+        fpsInverse = afterRenderTime - self.lastRenderTime
+        if fpsInverse <= 0:
+            fpsInverse = 1
+            
+        self.lastRenderTime = afterRenderTime
+        
+        if afterRenderTime - self.lastBoxUpdateTime >= self.debugInfo.boxUpdateInterval:
+            self.lastBoxUpdateTime = afterRenderTime
+        
+            self.debugInfo.currentRenderTimeBox.setText(str(renderTime))
+            self.debugInfo.currentFPSBox.setText(str(1.0 / fpsInverse))
         
         # immediately after rendering, we mark the contents as dirty to force Qt to update this
         # as much as possible

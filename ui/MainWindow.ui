@@ -125,6 +125,7 @@
     </property>
     <addaction name="actionProjectManagerVisible"/>
     <addaction name="actionFileSystemBrowserVisible"/>
+    <addaction name="actionCEGUIDebugInfoVisible"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -304,6 +305,14 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+B</string>
+   </property>
+  </action>
+  <action name="actionCEGUIDebugInfoVisible">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>CEGUI Debug Info</string>
    </property>
   </action>
  </widget>
