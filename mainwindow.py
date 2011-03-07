@@ -23,13 +23,16 @@ import ui.mainwindow
 
 import os
 
+import project
+import filesystembrowser
+
+# this module is responsible for managing CEGUI instance
+import cegui
+
+import tab
 # the various editor imports
 import bitmapeditor
 import texteditor
-
-import project
-import filesystembrowser
-import tab
 
 class MainWindow(QMainWindow):
     """The central window of the application"""
@@ -43,6 +46,9 @@ class MainWindow(QMainWindow):
         
         self.ui = ui.mainwindow.Ui_MainWindow()
         self.ui.setupUi(self)
+        
+        # we start CEGUI early and we always start it
+        self.ceguiWidget = cegui.CEGUIWidget()
         
         self.tabs = self.centralWidget().findChild(QTabWidget, "tabs")
         self.tabs.currentChanged.connect(self.slot_currentTabChanged)
