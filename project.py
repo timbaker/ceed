@@ -19,14 +19,16 @@
 from PySide import QtCore
 from PySide.QtGui import *
 
+import os.path
 from xml.etree import ElementTree
+
 import ui.projectmanager
 
-##
-# One item in the project
-#
-# This is usually a file or a folder
 class Item(QStandardItem):
+    """One item in the project
+    This is usually a file or a folder
+    """
+    
     def __init__(self, project, parent, icon, label):
         super(Item, self).__init__()
         
@@ -37,17 +39,16 @@ class Item(QStandardItem):
         self.setIcon(icon)
     
     def type(self):
-        # Qt docs say we have to overload type and return something over QStandardItem.UserType
+        # Qt docs say we have to overload type() and return something > QStandardItem.UserType
         return QStandardItem.UserType + 1
         
-    ##
-    # Returns path relative to the projects base directory
     def getRelativePath(self):
+        """Returns path relative to the projects base directory"""
         return self.path
     
-    ##
-    # Returns absolute path of the file/folder
     def getAbsolutePath(self):
+        """Returns absolute path of the file/folder"""
+        
         return self.project.getAbsolutePathOf(self.getRelativePath())
     
     @staticmethod
@@ -73,14 +74,13 @@ class Item(QStandardItem):
     def saveToElement(self):
         return ElementTree.Element("Item")
 
-##
-# A file is an item that can't have any children, it is directly opened instead of
-# being 
 class File(Item):
-    ##
-    # path is the path relative to project's base dir
+    """A file is an item that can't have any children, it is directly opened instead of
+    being expanded/collapsed like folders
+    """
+    
     def __init__(self, project, parent, path):
-        import os.path
+        """path is the path relative to project's base dir"""
         
         # TODO: File type icons are completely independent from tabbed editors,
         #       do we want to couple them or not?
@@ -135,9 +135,9 @@ class File(Item):
         return ret
 
 class Folder(Item):
-    ##
-    # path is the path relative to project's base dir
     def __init__(self, project, parent, name):
+        """path is the path relative to project's base dir"""
+        
         super(Folder, self).__init__(project, parent,
                                      QIcon("icons/project_items/folder.png"),
                                      name)
@@ -158,12 +158,13 @@ class Folder(Item):
         
         return ret
 
-##
-# This class encapsulates a project edited by the editor
-#
-# A project is basically a set of files and folders that are CEGUI related
-# (.font, .imageset, .layout, ...)
 class Project(QStandardItemModel):
+    """This class encapsulates a project edited by the editor
+
+    A project is basically a set of files and folders that are CEGUI related
+    (.font, .layout, ...)
+    """
+    
     def __init__(self):
         super(Project, self).__init__()
         
@@ -172,10 +173,10 @@ class Project(QStandardItemModel):
         self.projectFilePath = ""
         self.baseDirectory = "./"
         self.changed = True
-    
-    ##
-    # Loads XML project file from given path (preferably absolute path)
+
     def load(self, path):
+        """Loads XML project file from given path (preferably absolute path)"""
+        
         tree = ElementTree.parse(path)
         
         root = tree.getroot()
@@ -220,16 +221,18 @@ class Project(QStandardItemModel):
     
     def hasChanges(self):
         return self.changed
-    
-    ##
-    # Converts project relative paths to absolute paths
+
     def getAbsolutePathOf(self, path):
-        import os
-        
+        """Converts project relative paths to absolute paths"""
+ 
         absoluteBaseDirectory = os.path.join(os.path.dirname(self.projectFilePath), self.baseDirectory)
         return os.path.normpath(os.path.join(absoluteBaseDirectory, path))
 
 class ProjectManager(QDockWidget):
+    """This is basically a view of the Project model class,
+    it allows browsing and (in the future) changes
+    """
+    
     fileOpenRequested = QtCore.Signal(str)
     
     def __init__(self):
@@ -247,11 +250,23 @@ class ProjectManager(QDockWidget):
         self.setEnabled(project is not None)
         
         self.view.setModel(project)
+    
+    @staticmethod    
+    def getItemFromModelIndex(modelIndex):
+        # todo: is this ugly thing really the way to do this?
+        
+        # Qt says in the docs that returned parent is never None but can be invalid if it's the root
+        if not modelIndex.parent().isValid():
+            # if it's invalid, we can use the indices as absolute model top level indices
+            return modelIndex.model().item(modelIndex.row(), modelIndex.column())
+        else:
+            # otherwise, resort to recursion
+            return ProjectManager.getItemFromModelIndex(modelIndex.parent()).child(modelIndex.row(), modelIndex.column())
         
     def slot_itemDoubleClicked(self, modelIndex):
-        if not self.view.model():
+        if not modelIndex.model():
             return
-        
-        item = self.view.model().item(modelIndex.row(), modelIndex.column())
+
+        item = ProjectManager.getItemFromModelIndex(modelIndex)
         if isinstance(item, File): # only react to files, expanding folders is handled by Qt
             self.fileOpenRequested.emit(item.getAbsolutePath())

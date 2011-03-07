@@ -32,6 +32,8 @@ import filesystembrowser
 import tab
 
 class MainWindow(QMainWindow):
+    """The central window of the application"""
+    
     def __init__(self):
         super(MainWindow, self).__init__()
         
@@ -184,35 +186,8 @@ class MainWindow(QMainWindow):
         editor.makeCurrent()
         
     def closeEditorTab(self, editor):
-        if not editor.hasChanges():
-            # we can close immediately
-            editor.finalise()
-            self.tabEditors.remove(editor)
-            
-        else:
-            # we have changes, lets ask the user whether we should dump them or save them
-            result = QMessageBox.question(self,
-                                          "Unsaved changes!",
-                                          "There are unsaved changes in '%s'. "
-                                          "Do you want to save them? "
-                                          "(Pressing Discard will discard the changes!)" % (editor.filePath),
-                                          QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                                          QMessageBox.Save)
-            
-            if result == QMessageBox.Save:
-                # lets save changes and then kill the editor (This is the default action)
-                editor.saveChanges()
-                editor.finalise()
-                self.tabEditors.remove(editor)
-                
-            elif result == QMessageBox.Discard:
-                # changes will be discarded
-                # note: we don't have to call editor.discardChanges here
-                
-                editor.finalise()
-                self.tabEditors.remove(editor)
-            
-            # don't do anything if user selected 'Cancel'
+        editor.finalise()
+        self.tabEditors.remove(editor)
         
     def slot_saveProject(self):
         self.saveProject()
@@ -292,7 +267,32 @@ class MainWindow(QMainWindow):
         wdt = self.tabs.widget(index)
         editor = wdt.tabbedEditor
         
-        self.closeEditorTab(editor)
+        if not editor.hasChanges():
+            # we can close immediately
+            self.closeEditorTab(editor)
+            
+        else:
+            # we have changes, lets ask the user whether we should dump them or save them
+            result = QMessageBox.question(self,
+                                          "Unsaved changes!",
+                                          "There are unsaved changes in '%s'. "
+                                          "Do you want to save them? "
+                                          "(Pressing Discard will discard the changes!)" % (editor.filePath),
+                                          QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                                          QMessageBox.Save)
+            
+            if result == QMessageBox.Save:
+                # lets save changes and then kill the editor (This is the default action)
+                editor.saveChanges()
+                self.closeEditorTab(editor)
+                
+            elif result == QMessageBox.Discard:
+                # changes will be discarded
+                # note: we don't have to call editor.discardChanges here
+                
+                self.closeEditorTab(editor)
+            
+            # don't do anything if user selected 'Cancel'
         
     def slot_undo(self):
         if self.activeEditor:

@@ -23,11 +23,12 @@ import ui.filesystembrowser
 
 import os
 
-##
-# This class represents the file system browser dock widget, usually located right bottom
-# in the main window. It can browse your entire filesystem and if you double click a file
-# it will open an editor tab for it.
 class FileSystemBrowser(QDockWidget):
+    """This class represents the file system browser dock widget, usually located right bottom
+    in the main window. It can browse your entire filesystem and if you double click a file
+    it will open an editor tab for it.
+    """
+    
     fileOpenRequested = QtCore.Signal(str)
     
     def __init__(self):
@@ -50,9 +51,10 @@ class FileSystemBrowser(QDockWidget):
         
         self.setDirectory(os.curdir)
     
-    ##
-    # Sets the browser to view given directory    
+
     def setDirectory(self, directory):
+        """Sets the browser to view given directory"""
+        
         directory = os.path.abspath(directory)
         assert(os.path.isdir(directory))
         
@@ -62,9 +64,11 @@ class FileSystemBrowser(QDockWidget):
         self.directory = directory
         self.pathDisplay.setText(self.directory)
 
-    ##
-    # Slot that gets triggered whenever user double clicks anything in the filesystem view
     def slot_itemDoubleClicked(self, modelIndex):
+        """Slot that gets triggered whenever user double clicks anything 
+        in the filesystem view
+        """
+        
         childPath = modelIndex.data()
         absolutePath = os.path.normpath(os.path.join(self.directory, childPath))
         
@@ -73,8 +77,7 @@ class FileSystemBrowser(QDockWidget):
         else:
             self.fileOpenRequested.emit(absolutePath)
 
-    ##
-    # Slot that gets triggered whenever the "Parent Directory" button gets pressed
     def slot_parentDirectoryButton(self):
+        """Slot that gets triggered whenever the "Parent Directory" button gets pressed"""
         self.setDirectory(os.path.dirname(self.directory))
     

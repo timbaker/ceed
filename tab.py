@@ -19,12 +19,13 @@
 ##
 # This module contains interfaces needed to run editors tabs (multi-file editing)
 
-import os
+import os.path
 
-##
-# This is the base class for a class that takes a file and allows manipulation
-# with it. It occupies exactly 1 tab space.
 class TabbedEditor(object):
+    """This is the base class for a class that takes a file and allows manipulation
+    with it. It occupies exactly 1 tab space.
+    """
+    
     def __init__(self, filePath):
         self.initialised = False
         self.active = False
@@ -34,9 +35,9 @@ class TabbedEditor(object):
         self.tabWidget = None
         self.tabLabel = os.path.basename(self.filePath)
     
-    ##
-    # This method loads everything up so this editor is ready to be switched to
     def initialise(self, mainWindow):
+        """This method loads everything up so this editor is ready to be switched to"""
+        
         assert(not self.initialised)
         assert(self.tabWidget)
         
@@ -50,9 +51,11 @@ class TabbedEditor(object):
     
         self.initialised = True
     
-    ##
-    # Cleans up after itself, this is usually called when the tab is closed    
     def finalise(self):
+        """Cleans up after itself and removes itself from the tab list
+        this is usually called when you want the tab  closed
+        """
+        
         assert(self.initialised)
         assert(self.tabWidget)
         
@@ -73,11 +76,12 @@ class TabbedEditor(object):
         
         self.initialised = False
     
-    ##
-    # The tab gets "on stage", it's been clicked on and is now the only active
-    # tab. There can be either 0 tabs active (blank screen) or exactly 1 tab
-    # active.
     def activate(self):
+        """The tab gets "on stage", it's been clicked on and is now the only active
+        tab. There can be either 0 tabs active (blank screen) or exactly 1 tab
+        active.
+        """
+        
         currentActive = self.mainWindow.activeEditor
         
         # no need to deactivate and then activate again
@@ -91,35 +95,37 @@ class TabbedEditor(object):
 
         self.mainWindow.activeEditor = self
         
-    ##
-    # The tab gets "off stage", user switched to another tab.
-    # This is also called when user closes the tab (deactivate and then finalise
-    # is called).
     def deactivate(self):
+        """The tab gets "off stage", user switched to another tab.
+        This is also called when user closes the tab (deactivate and then finalise
+        is called).
+        """
+        
         self.active = False
         
         if self.mainWindow.activeEditor == self:
             self.mainWindow.activeEditor = None
     
-    ##
-    # Makes this tab editor current
-    # (this should automatically handle the respective deactivate and activate calls)        
     def makeCurrent(self):
+        """Makes this tab editor current (= the selected tab)"""
+        
+        # (this should automatically handle the respective deactivate and activate calls)   
+        
         self.mainWindow.tabs.setCurrentWidget(self.tabWidget)
-    
-    ##
-    # Checks whether this TabbedEditor
+ 
     def hasChanges(self):
+        """Checks whether this TabbedEditor contains changes
+        (= it should be saved before closing it)"""
+        
         return False
-        
-    ##
-    # Causes the tabbed editor to save all it's progress to the file
+
     def saveChanges(self):
+        """Causes the tabbed editor to save all it's progress to the file"""
         pass
-        
-    ##
-    # Causes the tabbed editor to discard all it's progress
+
     def discardChanges(self):
+        """Causes the tabbed editor to discard all it's progress"""
+        
         # early out
         if not self.hasChanges():
             return
@@ -144,33 +150,34 @@ class TabbedEditor(object):
     def redo(self):
         pass
 
-##
-# Constructs instances of TabbedEditor (multiple instances of one TabbedEditor
-# can coexist - user editing 2 layouts for example - with the ability to switch
-# from one to another)        
 class TabbedEditorFactory(object):
-    ##
-    # This checks whether instance created by this factory can edit given file
+    """Constructs instances of TabbedEditor (multiple instances of one TabbedEditor
+    can coexist - user editing 2 layouts for example - with the ability to switch
+    from one to another) 
+    """
+    
     def canEditFile(self, filePath):
+        """This checks whether instance created by this factory can edit given file"""
         return False
 
-    ##
-    # Creates the respective TabbedEditor instance
-    #
-    # This should only be called with a filePath the factory reported
-    # as editable by the instances
     def create(self, filePath):
+        """Creates the respective TabbedEditor instance
+    
+        This should only be called with a filePath the factory reported
+        as editable by the instances
+        """
+        
         return None
         
     # note: destroy doesn't really make sense as python is reference counted
     #       and everything is garbage collected
 
-##
-# This is basically a stub tabbed editor, it simply displays a message
-# and doesn't allow any sort of editing at all, all functionality is stubbed
-#
-# This is for internal use only so there is no factory for this editor
 class MessageTabbedEditor(TabbedEditor):
+    """This is basically a stub tabbed editor, it simply displays a message
+    and doesn't allow any sort of editing at all, all functionality is stubbed
+
+    This is for internal use only so there is no factory for this particular editor
+    """
     def __init__(self, filePath, message):
         from PySide.QtGui import QLabel
         

@@ -16,10 +16,12 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
+import sys
+from PySide.QtGui import QApplication, QSplashScreen
+
+import mainwindow
+
 def main():
-    import sys
-    from PySide.QtGui import QApplication, QSplashScreen
-    
     app = QApplication(sys.argv)
     app.setOrganizationName("CEGUI")
     app.setOrganizationDomain("cegui.org.uk")
@@ -30,7 +32,6 @@ def main():
     splash.show()
     splash.showMessage("Testing...")
 
-    import mainwindow
     wnd = mainwindow.MainWindow()
     wnd.show()
     
