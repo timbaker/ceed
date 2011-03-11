@@ -49,7 +49,7 @@ class MainWindow(QMainWindow):
         
         # we start CEGUI early and we always start it
         self.ceguiWidget = cegui.CEGUIWidget()
-        self.ceguiWidget.setParent(self.centralWidget())
+        #self.ceguiWidget.setParent(self.centralWidget())
         # we don't show the debug widget by default
         self.ceguiWidget.debugInfo.setVisible(False)
         self.ceguiWidget.debugInfo.setFloating(True)
@@ -65,6 +65,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.projectManager)
         
         self.fileSystemBrowser = filesystembrowser.FileSystemBrowser()
+        self.fileSystemBrowser.setVisible(False)
         self.addDockWidget(Qt.RightDockWidgetArea, self.fileSystemBrowser)
         
         self.connectActions()

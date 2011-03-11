@@ -19,9 +19,15 @@
 import sys
 from PySide.QtGui import QApplication, QSplashScreen
 
-import mainwindow
+import compileuifiles
 
 def main():
+    # first recompile all UI files to ensure they are up to date
+    compileuifiles.compileUIFiles()
+
+    # import mainwindow after UI files have been recompiled
+    import mainwindow
+    
     app = QApplication(sys.argv)
     app.setOrganizationName("CEGUI")
     app.setOrganizationDomain("cegui.org.uk")
