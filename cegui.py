@@ -100,7 +100,7 @@ class CEGUIWidget(QGLWidget):
         super(CEGUIWidget, self).__init__()
         
         self.debugInfo = CEGUIDebugInfo(self)
-        self.logger = CEGUIQtLogger(self.debugInfo)
+        #self.logger = CEGUIQtLogger(self.debugInfo)
     
     def __del__(self):
         #PyCEGUIOpenGLRenderer.OpenGLRenderer.destroySystem()
@@ -184,10 +184,16 @@ class CEGUIWidget(QGLWidget):
         root.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(1, 0), PyCEGUI.UDim(1, 0)))
         self.system.setGUISheet(root)
         
-        wnd = PyCEGUI.WindowManager.getSingleton().createWindow("TaharezLook/FrameWindow")
-        wnd.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(0.5, 0), PyCEGUI.UDim(0.5, 0)))
-        root.addChild(wnd)
-    
+        self.wnd = PyCEGUI.WindowManager.getSingleton().createWindow("TaharezLook/FrameWindow")
+        self.wnd.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(0.5, 0), PyCEGUI.UDim(0.5, 0)))
+        root.addChild(self.wnd)
+        
+        import propertysetinspector
+        
+        self.propertySetInspector = propertysetinspector.PropertySetInspector()
+        self.propertySetInspector.setPropertySet(self.wnd)
+        self.propertySetInspector.show()
+        
     def resizeGL(self, width, height):
         self.system.notifyDisplaySizeChanged(PyCEGUI.Sizef(width, height))
     

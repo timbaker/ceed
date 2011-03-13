@@ -50,6 +50,8 @@ class MainWindow(QMainWindow):
         # we start CEGUI early and we always start it
         self.ceguiWidget = cegui.CEGUIWidget()
         #self.ceguiWidget.setParent(self.centralWidget())
+        self.ceguiWidget.show()
+        
         # we don't show the debug widget by default
         self.ceguiWidget.debugInfo.setVisible(False)
         self.ceguiWidget.debugInfo.setFloating(True)
