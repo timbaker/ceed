@@ -16,8 +16,10 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-from PySide.QtCore import *
+from PySide import QtCore
 from PySide.QtGui import *
+
+import propertyinspector
 
 import ui.propertysetinspector
 
@@ -67,11 +69,11 @@ class PropertyEntry(QStandardItem):
     
     def setFilterMatched(self, matched):
         if matched:
-            self.setData(None, Qt.SizeHintRole)
-            self.value.setData(None, Qt.SizeHintRole)
+            self.setData(None, QtCore.Qt.SizeHintRole)
+            self.value.setData(None, QtCore.Qt.SizeHintRole)
         else:
-            self.setData(QSize(0, 0), Qt.SizeHintRole)
-            self.value.setData(QSize(0, 0), Qt.SizeHintRole)
+            self.setData(QtCore.QSize(0, 0), QtCore.Qt.SizeHintRole)
+            self.value.setData(QtCore.QSize(0, 0), QtCore.Qt.SizeHintRole)
 
 class PropertyCategory(QStandardItem):
     """Groups properties of the same origin
@@ -88,14 +90,14 @@ class PropertyCategory(QStandardItem):
         self.setText(origin)
         self.setEditable(False)
         
-        self.setData(QBrush(Qt.GlobalColor.lightGray), Qt.BackgroundRole)
+        self.setData(QBrush(QtCore.Qt.GlobalColor.lightGray), QtCore.Qt.BackgroundRole)
         font = QFont()
         font.setBold(True)
         font.setPixelSize(14)
-        self.setData(font, Qt.FontRole)
+        self.setData(font, QtCore.Qt.FontRole)
         
         self.propertyCount = QStandardItem()
-        self.propertyCount.setData(QBrush(Qt.GlobalColor.lightGray), Qt.BackgroundRole)
+        self.propertyCount.setData(QBrush(QtCore.Qt.GlobalColor.lightGray), QtCore.Qt.BackgroundRole)
         self.propertyCount.setEditable(False)
         
     def getPropertySet(self):
@@ -103,9 +105,9 @@ class PropertyCategory(QStandardItem):
         
     def setFilterMatched(self, matched):
         if matched:
-            self.setData(QBrush(Qt.GlobalColor.black), Qt.ForegroundRole)
+            self.setData(QBrush(QtCore.Qt.GlobalColor.black), QtCore.Qt.ForegroundRole)
         else:
-            self.setData(QBrush(Qt.GlobalColor.gray), Qt.ForegroundRole)
+            self.setData(QBrush(QtCore.Qt.GlobalColor.gray), QtCore.Qt.ForegroundRole)
         
     def filterProperties(self, filter):
         matches = 0
@@ -133,24 +135,40 @@ class PropertySetInspectorDelegate(QItemDelegate):
     PropertyInspectors
     """
     
-    def __init__(self, inspector):
+    def __init__(self, setInspector):
         super(PropertySetInspectorDelegate, self).__init__()
         
-        self.inspector = inspector
+        self.setInspector = setInspector
     
     def createEditor(self, parent, option, index):
-        return QComboBox(parent)
+        propertyEntry = self.setInspector.getPropertyEntry(index)
+        inspector, mapping = propertyinspector.PropertyInspectorManager.getInspectorAndMapping(propertyEntry.property)
+        
+        ret = inspector.createEditWidget(parent, propertyEntry, mapping)
     
-    def setEditorData(self, editor, index):
-        propertyEntry = self.inspector.getPropertyEntry(index)
+        return ret
+    
+    def setEditorData(self, editorWidget, index):
+        propertyEntry = self.setInspector.getPropertyEntry(index)
+        if propertyEntry is None:
+            return
+
+        editorWidget.inspector.populateEditWidget(editorWidget, propertyEntry, editorWidget.mapping)
+        
+    def setModelData(self, editorWidget, model, index):
+        propertyEntry = self.setInspector.getPropertyEntry(index)
         if propertyEntry is None:
             return
         
-        print propertyEntry
+        editorWidget.inspector.notifyEditingEnded(editorWidget, propertyEntry, editorWidget.mapping)
 
 class PropertySetInspector(QWidget):
     """Allows browsing and editing of any CEGUI::PropertySet derived class
     """
+    
+    propertyEditingStarted = QtCore.Signal(str)
+    propertyEditingEnded = QtCore.Signal(str, str, str)
+    propertyEditingProgress = QtCore.Signal(str, str)
     
     def __init__(self):
         super(PropertySetInspector, self).__init__()

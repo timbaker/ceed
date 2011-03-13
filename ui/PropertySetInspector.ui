@@ -24,7 +24,7 @@
    <item>
     <widget class="QTreeView" name="view">
      <property name="editTriggers">
-      <set>QAbstractItemView::CurrentChanged</set>
+      <set>QAbstractItemView::CurrentChanged|QAbstractItemView::DoubleClicked|QAbstractItemView::SelectedClicked</set>
      </property>
      <property name="tabKeyNavigation">
       <bool>true</bool>

@@ -25,6 +25,7 @@ import os
 
 import project
 import filesystembrowser
+import propertyinspector
 
 # this module is responsible for managing CEGUI instance
 import cegui
@@ -74,6 +75,8 @@ class MainWindow(QMainWindow):
         self.connectSignals()
         
         self.registerEditorFactories()
+        
+        propertyinspector.PropertyInspectorManager.loadMappings("data/StockMappings.xml")
     
     def connectActions(self):
         self.saveProjectAction = self.findChild(QAction, "actionSaveProject")

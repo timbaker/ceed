@@ -17,7 +17,9 @@
 ################################################################################
 
 from PySide.QtGui import QDockWidget, QLineEdit
-from PySide.QtOpenGL import QGLWidget
+from PySide.QtOpenGL import *
+
+from OpenGL.GL import *
 
 import ui.ceguidebuginfo
 
@@ -26,7 +28,6 @@ import time
 
 import PyCEGUI
 import PyCEGUIOpenGLRenderer
-
 
 class CEGUIQtLogger(PyCEGUI.Logger):
     """Redirects CEGUI log info to CEGUIWidgetInfo"""
@@ -194,19 +195,34 @@ class CEGUIWidget(QGLWidget):
         self.propertySetInspector.setPropertySet(self.wnd)
         self.propertySetInspector.show()
         
+        self.propertySetInspector.propertyEditingProgress.connect(self.setPropertyProgress)
+        
+    def setPropertyProgress(self, name, value):
+        self.wnd.setProperty(name, value)
+    
     def resizeGL(self, width, height):
         self.system.notifyDisplaySizeChanged(PyCEGUI.Sizef(width, height))
     
     def paintGL(self):
         renderStartTime = time.time()
+        
+        glClearColor(0, 0, 0, 1)
+        glClear(GL_COLOR_BUFFER_BIT)
+
+        # signalRedraw is called to work around potential issues with dangling
+        # references in the rendering code for some versions of CEGUI.
+        self.system.signalRedraw()
         self.system.renderGUI()
+        
         afterRenderTime = time.time()
         renderTime = afterRenderTime - renderStartTime
         
         fpsInverse = afterRenderTime - self.lastRenderTime
         if fpsInverse <= 0:
             fpsInverse = 1
-            
+
+        self.system.injectTimePulse(fpsInverse)
+        
         self.lastRenderTime = afterRenderTime
         
         if afterRenderTime - self.lastBoxUpdateTime >= self.debugInfo.boxUpdateInterval:

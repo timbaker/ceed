@@ -178,7 +178,6 @@ class Project(QStandardItemModel):
         """Loads XML project file from given path (preferably absolute path)"""
         
         tree = ElementTree.parse(path)
-        
         root = tree.getroot()
         
         assert(root.get("version") == "0.8")

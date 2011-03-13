@@ -19,21 +19,44 @@
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+from xml.etree import ElementTree
+
+import math
+
 class PropertyInspectorMapping(object):
     """Maps a CEGUI::Property (by origin and name) to a PropertyInspector to allow
     its viewing and editing"""
     
-    def __init__(self, propertyOrigin = "", propertyName = "", targetInspectorName = "", targetInspectorSettings = ""):
+    def __init__(self, propertyOrigin = "", propertyName = "",
+                       targetInspectorName = "", targetInspectorSettings = {}):
         self.propertyOrigin = propertyOrigin
         self.propertyName = propertyName
         self.targetInspectorName = targetInspectorName
         self.targetInspectorSettings = targetInspectorSettings
     
     def loadFromElement(self, element):
-        pass
+        self.propertyOrigin = element.get("propertyOrigin")
+        self.propertyName = element.get("propertyName")
+        self.targetInspectorName = element.get("targetInspectorName")
+        self.targetInspectorSettings = {}
+        
+        for setting in element.findall("setting"):
+            self.targetInspectorSettings[setting.get("name")] = setting.get("value")
     
-    def saveToElement(self, element):
-        pass
+    def saveToElement(self):
+        element = ElementTree.Element("mapping")
+        
+        element.set("propertyOrigin", self.propertyOrigin)
+        element.set("propertyName", self.propertyName)
+        element.set("targetInspectorName", self.targetInspectorName)
+        
+        for name, value in self.targetInspectorSettings:
+            setting = ElementTree.Element("setting")
+            setting.set("name", name)
+            setting.set("value", value)
+            element.append(setting)
+            
+        return element
 
 class PropertyInspector(object):
     """Interface class, derived classes implement the actual editing and viewing
@@ -46,24 +69,117 @@ class PropertyInspector(object):
     def getName(self):
         return None
     
-    def createEditWidget(self, parent, mapping):
+    def createEditWidget(self, parent, propertyEntry, mapping):
+        ret = self.impl_createEditWidget(parent, propertyEntry, mapping)
+        ret.inspector = self
+        ret.mapping = mapping
+        ret.propertyEntry = propertyEntry
+        
+        propertySetInspector = propertyEntry.parent.parent
+        propertySetInspector.propertyEditingStarted.emit(propertyEntry.property.getName())
+        
+        return ret 
+    
+    def impl_createEditWidget(self, parent, propertyEntry, mapping):
         pass
     
-    def populateEditWidget(self, widget, property, mapping):
+    def populateEditWidget(self, widget, propertyEntry, mapping):
+        # save the old value
+        widget.oldValue = propertyEntry.getCurrentValue()
+        
+        self.impl_populateEditWidget(widget, propertyEntry, mapping)
+    
+    def impl_populateEditWidget(self, widget, propertyEntry, mapping):
         pass
     
-class CheckboxPropertyInspector(PropertyInspector):
+    def getCurrentValueForProperty(self, widget, propertyEntry, mapping):
+        pass
+    
+    def notifyEditingProgress(self, widget, propertyEntry, mapping):
+        propertySetInspector = propertyEntry.parent.parent
+        value = self.getCurrentValueForProperty(widget, propertyEntry, mapping)
+        
+        propertySetInspector.propertyEditingProgress.emit(propertyEntry.property.getName(), value) 
+    
+    def notifyEditingEnded(self, widget, propertyEntry, mapping):
+        propertySetInspector = propertyEntry.parent.parent
+        oldValue = widget.oldValue
+        value = self.getCurrentValueForProperty(widget, propertyEntry, mapping)
+        
+        propertySetInspector.propertyEditingEnded.emit(propertyEntry.property.getName(), oldValue, value) 
+
+class LineEditPropertyInspector(PropertyInspector):
+    def canEdit(self):
+        dataTypes = ["String"]
+        return property.getDataType() in dataTypes
+    
+    def getName(self):
+        return "LineEdit"
+    
+    def impl_createEditWidget(self, parent, propertyEntry, mapping):
+        ret = QLineEdit(parent)
+        ret.setAutoFillBackground(True)
+        
+        def slot_textChanged(newValue):
+            self.notifyEditingProgress(ret, propertyEntry, mapping)
+        
+        ret.textChanged.connect(slot_textChanged)
+        
+        return ret
+    
+    def impl_populateEditWidget(self, widget, propertyEntry, mapping):
+        value = propertyEntry.getCurrentValue()
+        
+        widget.setText(value)
+        
+    def getCurrentValueForProperty(self, widget, propertyEntry, mapping):
+        return widget.text()
+    
+class TextEditPropertyInspector(PropertyInspector):
+    def canEdit(self):
+        dataTypes = ["String"]
+        return property.getDataType() in dataTypes
+    
+    def getName(self):
+        return "TextEdit"
+    
+    def impl_createEditWidget(self, parent, propertyEntry, mapping):
+        ret = QTextEdit(parent)
+        ret.setAutoFillBackground(True)
+    
+        def slot_textChanged():
+            self.notifyEditingProgress(ret, propertyEntry, mapping)
+        
+        ret.textChanged.connect(slot_textChanged)
+        
+        return ret
+    
+    def impl_populateEditWidget(self, widget, propertyEntry, mapping):
+        value = propertyEntry.getCurrentValue()
+        
+        widget.setText(value)
+        
+    def getCurrentValueForProperty(self, widget, propertyEntry, mapping):
+        return widget.toPlainText()
+
+class CheckBoxPropertyInspector(PropertyInspector):
     def canEdit(self, property):
         return property.getDataType() == "bool"
     
     def getName(self):
-        return "Checkbox"
+        return "CheckBox"
     
-    def createEditWidget(self, parent):
+    def impl_createEditWidget(self, parent, propertyEntry, mapping):
         return QCheckBox(parent)
     
-    def setEditWidgetData(self, widget, propertyEntry):
+    def impl_populateEditWidget(self, widget, propertyEntry, mapping):
         widget.setChecked(propertyEntry.getCurrentValue() == "True")
+        
+    def getCurrentValueForProperty(self, widget, propertyEntry, mapping):
+        if widget.isChecked():
+            return "True"
+        else:
+            return "False"
 
 class SliderPropertyInspector(PropertyInspector):
     def canEdit(self):
@@ -73,11 +189,68 @@ class SliderPropertyInspector(PropertyInspector):
     def getName(self):
         return "Slider"
     
-    def createEditWidget(self, parent, propertyEntry):
-        return QSlider(parent)
+    def impl_createEditWidget(self, parent, propertyEntry, mapping):
+        ret = QSlider(parent)
+        ret.setAutoFillBackground(True)
+        ret.setOrientation(Qt.Horizontal)
+        
+        def slot_sliderValueChanged(newValue):
+            self.notifyEditingProgress(ret, propertyEntry, mapping)
+        
+        ret.valueChanged.connect(slot_sliderValueChanged)
+        
+        return ret
     
-    def setEditWidgetData(self, widget, propertyEntry):
-        pass
+    def impl_populateEditWidget(self, widget, propertyEntry, mapping):
+        value = float(propertyEntry.getCurrentValue())
+        denominator = float(mapping.targetInspectorSettings["denominator"])
+        
+        # multiply because we are converting from property value to slider position
+        widget.setSliderPosition(math.trunc(value * denominator))
+        
+    def getCurrentValueForProperty(self, widget, propertyEntry, mapping):
+        denominator = float(mapping.targetInspectorSettings["denominator"])
+        ret = float(widget.sliderPosition()) / denominator
+        
+        return str(ret)
     
 class PropertyInspectorManager(object):
-    pass
+    inspectors = [
+        LineEditPropertyInspector(),
+        TextEditPropertyInspector(),
+        CheckBoxPropertyInspector(),
+        SliderPropertyInspector()
+    ]
+    
+    mappings = []
+    
+    @staticmethod
+    def clearMappings():
+        PropertyInspectorManager.mappings = []
+    
+    @staticmethod    
+    def loadMappings(absolutePath):
+        tree = ElementTree.parse(absolutePath)
+        root = tree.getroot()
+        
+        assert(root.get("version") == "0.8")
+        
+        for mappingElement in root.findall("mapping"):
+            mapping = PropertyInspectorMapping()
+            mapping.loadFromElement(mappingElement)
+            PropertyInspectorManager.mappings.append(mapping)
+    
+    @staticmethod
+    def getInspectorAndMapping(property):
+        # reversed because custom mappings loaded later override stock mappings loaded earlier
+        for mapping in reversed(PropertyInspectorManager.mappings):
+            if mapping.propertyOrigin == property.getOrigin() and mapping.propertyName == property.getName():
+                for inspector in PropertyInspectorManager.inspectors:
+                    if inspector.getName() == mapping.targetInspectorName:
+                        return inspector, mapping
+                
+                raise Exception("Found a mapping but it's target is invalid, can't find any "
+                                "inspector of name '%s'" % (mapping.targetInspectorName))
+        
+        # mapping doesn't exist        
+        return None, None            

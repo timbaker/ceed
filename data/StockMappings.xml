@@ -1,0 +1,13 @@
+<mappings version="0.8">
+    <mapping propertyOrigin="Window" propertyName="Alpha" targetInspectorName="Slider">
+        <setting name="minimum" value="0" />
+        <setting name="maximum" value="100" />
+        <setting name="steps" value="100" />
+        <setting name="denominator" value="100" />
+        <setting name="lineEdit" value="False" />
+    </mapping>
+    <mapping propertyOrigin="Window" propertyName="AlwaysOnTop" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="Window" propertyName="ClippedByParent" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="Window" propertyName="DestroyedByParent" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="Window" propertyName="Text" targetInspectorName="TextEdit" />
+</mappings>
