@@ -189,17 +189,6 @@ class CEGUIWidget(QGLWidget):
         self.wnd.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(0.5, 0), PyCEGUI.UDim(0.5, 0)))
         root.addChild(self.wnd)
         
-        import propertysetinspector
-        
-        self.propertySetInspector = propertysetinspector.PropertySetInspector()
-        self.propertySetInspector.setPropertySet(self.wnd)
-        self.propertySetInspector.show()
-        
-        self.propertySetInspector.propertyEditingProgress.connect(self.setPropertyProgress)
-        
-    def setPropertyProgress(self, name, value):
-        self.wnd.setProperty(name, value)
-    
     def resizeGL(self, width, height):
         self.system.notifyDisplaySizeChanged(PyCEGUI.Sizef(width, height))
     

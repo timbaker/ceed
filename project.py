@@ -22,7 +22,10 @@ from PySide.QtGui import *
 import os.path
 from xml.etree import ElementTree
 
+import qtwidgets
+
 import ui.projectmanager
+import ui.newprojectdialog
 
 class Item(QStandardItem):
     """One item in the project
@@ -170,6 +173,7 @@ class Project(QStandardItemModel):
         
         self.setHorizontalHeaderLabels(["Name"])
         
+        self.name = "Unknown"
         self.projectFilePath = ""
         self.baseDirectory = "./"
         self.changed = True
@@ -181,6 +185,11 @@ class Project(QStandardItemModel):
         root = tree.getroot()
         
         assert(root.get("version") == "0.8")
+        
+        self.name = root.get("name")
+        if not self.name:
+            self.name = "Unknown"
+            
         self.baseDirectory = root.get("base_directory")
         if not self.baseDirectory:
             self.baseDirectory = "./"
@@ -206,6 +215,7 @@ class Project(QStandardItemModel):
         
         # This CEED is built to conform CEGUI 0.8
         root.set("version", "0.8")
+        root.set("name", self.name)
         root.set("base_directory", self.baseDirectory)
         
         items = ElementTree.SubElement(root, "Items")
@@ -269,3 +279,24 @@ class ProjectManager(QDockWidget):
         item = ProjectManager.getItemFromModelIndex(modelIndex)
         if isinstance(item, File): # only react to files, expanding folders is handled by Qt
             self.fileOpenRequested.emit(item.getAbsolutePath())
+            
+class NewProjectDialog(QDialog):
+    def __init__(self):
+        super(NewProjectDialog, self).__init__()
+        
+        self.ui = ui.newprojectdialog.Ui_NewProjectDialog()
+        self.ui.setupUi(self)
+        
+        self.projectName = self.findChild(QLineEdit, "projectName")
+        
+        self.projectFilePath = self.findChild(qtwidgets.FileLineEdit, "projectFilePath")
+        self.projectFilePath.filter = "Project file (*.project)"
+        self.projectFilePath.saveMode = True
+    
+    # creates the project using data from this dialog    
+    def createProject(self):
+        ret = Project()
+        ret.name = self.projectName.text()
+        ret.projectFilePath = self.projectFilePath.text()
+        
+        return ret

@@ -35,6 +35,8 @@ import tab
 import bitmapeditor
 import texteditor
 
+import about
+
 class MainWindow(QMainWindow):
     """The central window of the application"""
     
@@ -51,7 +53,7 @@ class MainWindow(QMainWindow):
         # we start CEGUI early and we always start it
         self.ceguiWidget = cegui.CEGUIWidget()
         #self.ceguiWidget.setParent(self.centralWidget())
-        self.ceguiWidget.show()
+        #self.ceguiWidget.show()
         
         # we don't show the debug widget by default
         self.ceguiWidget.debugInfo.setVisible(False)
@@ -79,6 +81,9 @@ class MainWindow(QMainWindow):
         propertyinspector.PropertyInspectorManager.loadMappings("data/StockMappings.xml")
     
     def connectActions(self):
+        self.newProjectAction = self.findChild(QAction, "actionNewProject")
+        self.newProjectAction.triggered.connect(self.slot_newProject)
+        
         self.saveProjectAction = self.findChild(QAction, "actionSaveProject")
         self.saveProjectAction.triggered.connect(self.slot_saveProject)
         # when this starts up, no project is opened, hence you can't save the "no project"
@@ -105,6 +110,9 @@ class MainWindow(QMainWindow):
         self.redoAction = self.findChild(QAction, "actionRedo")
         self.undoAction.triggered.connect(self.slot_redo)
         self.redoAction.setEnabled(False)
+        
+        self.licenseAction = self.findChild(QAction, "actionLicense")
+        self.licenseAction.triggered.connect(self.slot_license)
         
     def connectSignals(self):
         self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiWidget.debugInfo.setVisible)
@@ -208,6 +216,31 @@ class MainWindow(QMainWindow):
     def closeEditorTab(self, editor):
         editor.finalise()
         self.tabEditors.remove(editor)
+        
+    def slot_newProject(self):
+        if self.project:
+            # another project is already opened!
+            result = QMessageBox.question(self,
+                                          "Another project already opened!",
+                                          "Before creating a new project, you must close the one currently opened. "
+                                          "Do you want to close currently opened project? (all unsaved changes will be lost!)",
+                                          QMessageBox.Yes | QMessageBox.Cancel,
+                                          QMessageBox.Cancel)
+            
+            if result == QMessageBox.Yes:
+                self.closeProject()
+            else:
+                # User selected cancel, NOOP
+                return
+        
+        newProjectDialog = project.NewProjectDialog()
+        result = newProjectDialog.exec_()
+        
+        if result == QDialog.Accepted:
+            newProject = newProjectDialog.createProject()
+            newProject.save()
+            
+            self.openProject(newProject.projectFilePath)
         
     def slot_saveProject(self):
         self.saveProject()
@@ -321,4 +354,9 @@ class MainWindow(QMainWindow):
     def slot_redo(self):
         if self.activeEditor:
             self.activeEditor.redo()
+            
+    def slot_license(self):
+        dialog = about.LicenseDialog()
+        dialog.exec_()
+        
     

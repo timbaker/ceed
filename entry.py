@@ -23,7 +23,8 @@ import compileuifiles
 
 def main():
     # first recompile all UI files to ensure they are up to date
-    compileuifiles.compileUIFiles()
+    compileuifiles.compileUIFiles("./ui")
+    compileuifiles.compileUIFiles("./ui/widgets")
 
     # import mainwindow after UI files have been recompiled
     import mainwindow

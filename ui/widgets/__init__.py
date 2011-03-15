@@ -2,8 +2,6 @@
 #   CEED - A unified CEGUI editor
 #   Copyright (C) 2011 Martin Preisler <preisler.m@gmail.com>
 #
-#   Taken with very minor changes from CELE2 by Paul D Turner
-#
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
 #   the Free Software Foundation, either version 3 of the License, or
@@ -18,19 +16,4 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-import os
-from pysideuic import compileUi
-
-def compileUIFiles(ui_dir = None):
-    for name in os.listdir(ui_dir):
-        ui_name = os.path.join(ui_dir, name)
-        if os.path.isfile(ui_name):
-            if name.endswith(".ui"):
-                outname = name[:-3] + ".py"
-                outname = outname.lower()
-                outfile = open(os.path.join(ui_dir, outname), "w")
-                compileUi(ui_name, outfile)
-                outfile.close()
-
-if __name__ == "__main__":
-    compileUIFiles()
+# package stub file

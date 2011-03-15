@@ -17,7 +17,10 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>CEGUI Unified Editor</string>
+  </property>
+  <property name="windowOpacity">
+   <double>1.000000000000000</double>
   </property>
   <property name="documentMode">
    <bool>true</bool>
@@ -114,6 +117,7 @@
     <property name="title">
      <string>About</string>
     </property>
+    <addaction name="actionLicense"/>
    </widget>
    <widget class="QMenu" name="menu">
     <property name="title">
@@ -157,8 +161,8 @@
    <addaction name="actionSave"/>
    <addaction name="actionSaveAll"/>
    <addaction name="separator"/>
-   <addaction name="actionUndo"/>
    <addaction name="actionRedo"/>
+   <addaction name="actionUndo"/>
   </widget>
   <action name="actionQuit">
    <property name="icon">
@@ -307,12 +311,20 @@
    </property>
   </action>
   <action name="actionProjectSettings">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>icons/actions/project_settings.png</normaloff>icons/actions/project_settings.png</iconset>
    </property>
    <property name="text">
     <string>Project Settings</string>
+   </property>
+  </action>
+  <action name="actionLicense">
+   <property name="text">
+    <string>License</string>
    </property>
   </action>
  </widget>
