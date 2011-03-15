@@ -1,4 +1,5 @@
 <mappings version="0.8">
+    <!-- CEGUI::Window -->
     <mapping propertyOrigin="Window" propertyName="Alpha" targetInspectorName="Slider">
         <setting name="minimum" value="0" />
         <setting name="maximum" value="100" />
@@ -9,5 +10,19 @@
     <mapping propertyOrigin="Window" propertyName="AlwaysOnTop" targetInspectorName="CheckBox" />
     <mapping propertyOrigin="Window" propertyName="ClippedByParent" targetInspectorName="CheckBox" />
     <mapping propertyOrigin="Window" propertyName="DestroyedByParent" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="Window" propertyName="Disabled" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="Window" propertyName="ID" targetInspectorName="LineEdit" />
+    <mapping propertyOrigin="Window" propertyName="InheritsAlpha" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="Window" propertyName="Visible" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="Window" propertyName="RestoreOldCapture" targetInspectorName="CheckBox" />
     <mapping propertyOrigin="Window" propertyName="Text" targetInspectorName="TextEdit" />
+    
+    <!-- CEGUI::FrameWindow -->
+    <mapping propertyOrigin="CEGUI/FrameWindow" propertyName="SizingEnabled" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="CEGUI/FrameWindow" propertyName="FrameEnabled" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="CEGUI/FrameWindow" propertyName="TitlebarEnabled" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="CEGUI/FrameWindow" propertyName="CloseButtonEnabled" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="CEGUI/FrameWindow" propertyName="RollUpEnabled" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="CEGUI/FrameWindow" propertyName="DragMovingEnabled" targetInspectorName="CheckBox" />
+    <mapping propertyOrigin="CEGUI/FrameWindow" propertyName="SizingBorderThickness" targetInspectorName="LineEdit" />
 </mappings>

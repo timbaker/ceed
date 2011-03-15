@@ -170,7 +170,15 @@ class CheckBoxPropertyInspector(PropertyInspector):
         return "CheckBox"
     
     def impl_createEditWidget(self, parent, propertyEntry, mapping):
-        return QCheckBox(parent)
+        ret = QCheckBox(parent)
+        ret.setAutoFillBackground(True)
+        
+        def slot_stateChanged(state):
+            self.notifyEditingProgress(ret, propertyEntry, mapping)
+        
+        ret.stateChanged.connect(slot_stateChanged)
+        
+        return ret
     
     def impl_populateEditWidget(self, widget, propertyEntry, mapping):
         widget.setChecked(propertyEntry.getCurrentValue() == "True")
