@@ -57,6 +57,10 @@ class PropertyEntry(QStandardItem):
         self.setText(property.getName())
         self.setEditable(False)
         
+        font = QFont()
+        font.setPixelSize(14)
+        self.setData(font, QtCore.Qt.FontRole)
+        
         assert(self.parent.text() == property.getOrigin())
         
         self.value = PropertyValue(self)
@@ -66,14 +70,6 @@ class PropertyEntry(QStandardItem):
     
     def getCurrentValue(self):
         return self.property.get(self.getPropertySet())
-    
-    def setFilterMatched(self, matched):
-        if matched:
-            self.setData(None, QtCore.Qt.SizeHintRole)
-            self.value.setData(None, QtCore.Qt.SizeHintRole)
-        else:
-            self.setData(QtCore.QSize(0, 0), QtCore.Qt.SizeHintRole)
-            self.value.setData(QtCore.QSize(0, 0), QtCore.Qt.SizeHintRole)
 
 class PropertyCategory(QStandardItem):
     """Groups properties of the same origin
@@ -93,7 +89,7 @@ class PropertyCategory(QStandardItem):
         self.setData(QBrush(QtCore.Qt.GlobalColor.lightGray), QtCore.Qt.BackgroundRole)
         font = QFont()
         font.setBold(True)
-        font.setPixelSize(14)
+        font.setPixelSize(16)
         self.setData(font, QtCore.Qt.FontRole)
         
         self.propertyCount = QStandardItem()
@@ -110,6 +106,9 @@ class PropertyCategory(QStandardItem):
             self.setData(QBrush(QtCore.Qt.GlobalColor.gray), QtCore.Qt.ForegroundRole)
         
     def filterProperties(self, filter):
+        toShow = []
+        toHide = []
+        
         matches = 0
         
         i = 0
@@ -117,10 +116,12 @@ class PropertyCategory(QStandardItem):
             propertyEntry = self.child(i, 0)
             
             match = fnmatch.fnmatch(propertyEntry.text(), filter)
-            propertyEntry.setFilterMatched(match)
             
             if match:
                 matches += 1
+                toShow.append(propertyEntry)
+            else:
+                toHide.append(propertyEntry)
             
             i += 1
  
@@ -129,6 +130,8 @@ class PropertyCategory(QStandardItem):
             self.propertyCount.setText("%i matches" % matches)
         else:
             self.propertyCount.setText("%i properties" % matches)
+            
+        return toShow, toHide
 
 class PropertySetInspectorDelegate(QItemDelegate):
     """Qt model/view delegate that allows delegating editing and viewing to
@@ -240,7 +243,13 @@ class PropertySetInspector(QWidget):
         i = 0
         while i < self.model.rowCount():
             category = self.model.item(i, 0)
-            category.filterProperties(filter)
+            toShow, toHide = category.filterProperties(filter)
+            
+            for entry in toShow:
+                self.view.setRowHidden(entry.index().row(), entry.index().parent(), False)
+                
+            for entry in toHide:
+                self.view.setRowHidden(entry.index().row(), entry.index().parent(), True)
             
             i += 1
             

@@ -92,6 +92,10 @@ class PropertyInspector(object):
     def impl_populateEditWidget(self, widget, propertyEntry, mapping):
         pass
     
+    def impl_populatePropertyEntry(self, widget, propertyEntry, mapping):
+        # hopefully a reasonable default implementation
+        propertyEntry.value.setText(self.getCurrentValueForProperty(widget, propertyEntry, mapping))
+    
     def getCurrentValueForProperty(self, widget, propertyEntry, mapping):
         pass
     
@@ -106,6 +110,7 @@ class PropertyInspector(object):
         oldValue = widget.oldValue
         value = self.getCurrentValueForProperty(widget, propertyEntry, mapping)
         
+        self.impl_populatePropertyEntry(widget, propertyEntry, mapping)
         propertySetInspector.propertyEditingEnded.emit(propertyEntry.property.getName(), oldValue, value) 
 
 class LineEditPropertyInspector(PropertyInspector):
@@ -198,16 +203,16 @@ class SliderPropertyInspector(PropertyInspector):
         return "Slider"
     
     def impl_createEditWidget(self, parent, propertyEntry, mapping):
-        ret = QSlider(parent)
-        ret.setAutoFillBackground(True)
-        ret.setOrientation(Qt.Horizontal)
+        slider = QSlider(parent)
+        slider.setAutoFillBackground(True)
+        slider.setOrientation(Qt.Horizontal)
         
         def slot_sliderValueChanged(newValue):
-            self.notifyEditingProgress(ret, propertyEntry, mapping)
+            self.notifyEditingProgress(slider, propertyEntry, mapping)
         
-        ret.valueChanged.connect(slot_sliderValueChanged)
-        
-        return ret
+        slider.valueChanged.connect(slot_sliderValueChanged)
+
+        return slider
     
     def impl_populateEditWidget(self, widget, propertyEntry, mapping):
         value = float(propertyEntry.getCurrentValue())
