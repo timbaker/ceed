@@ -26,6 +26,7 @@ import qtwidgets
 
 import ui.projectmanager
 import ui.newprojectdialog
+import ui.projectsettingsdialog
 
 class Item(QStandardItem):
     """One item in the project
@@ -176,6 +177,13 @@ class Project(QStandardItemModel):
         self.name = "Unknown"
         self.projectFilePath = ""
         self.baseDirectory = "./"
+        
+        self.imagesetsPath = "./imagesets"
+        self.fontsPath = "./fonts"
+        self.looknfeelsPath = "./looknfeel"
+        self.schemesPath = "./schemes"
+        self.layoutsPath = "./layouts"
+        
         self.changed = True
 
     def load(self, path):
@@ -186,13 +194,15 @@ class Project(QStandardItemModel):
         
         assert(root.get("version") == "0.8")
         
-        self.name = root.get("name")
-        if not self.name:
-            self.name = "Unknown"
+        self.name = root.get("name", "Unknown")
             
-        self.baseDirectory = root.get("base_directory")
-        if not self.baseDirectory:
-            self.baseDirectory = "./"
+        self.baseDirectory = root.get("base_directory", "./")
+        
+        self.imagesetsPath = root.get("imagesets_path", "./imagesets")            
+        self.fontsPath = root.get("fonts_path", "./fonts")            
+        self.looknfeelsPath = root.get("looknfeels_path", "./looknfeel")            
+        self.schemesPath = root.get("schemes_path", "./schemes")            
+        self.layoutsPath = root.get("layouts_path", "./layouts")
         
         items = root.find("Items")
         
@@ -217,6 +227,12 @@ class Project(QStandardItemModel):
         root.set("version", "0.8")
         root.set("name", self.name)
         root.set("base_directory", self.baseDirectory)
+        
+        root.set("imagesets_path", self.imagesetsPath)
+        root.set("fonts_path", self.fontsPath)
+        root.set("looknfeels_path", self.looknfeelsPath)
+        root.set("schemes_path", self.schemesPath)
+        root.set("layouts_path", self.layoutsPath)
         
         items = ElementTree.SubElement(root, "Items")
         
@@ -291,7 +307,7 @@ class NewProjectDialog(QDialog):
         
         self.projectFilePath = self.findChild(qtwidgets.FileLineEdit, "projectFilePath")
         self.projectFilePath.filter = "Project file (*.project)"
-        self.projectFilePath.saveMode = True
+        self.projectFilePath.mode = qtwidgets.FileLineEdit.NewFileMode    
     
     # creates the project using data from this dialog    
     def createProject(self):
@@ -300,3 +316,59 @@ class NewProjectDialog(QDialog):
         ret.projectFilePath = self.projectFilePath.text()
         
         return ret
+
+class ProjectSettingsDialog(QDialog):
+    def __init__(self, project):
+        super(ProjectSettingsDialog, self).__init__()
+        
+        self.ui = ui.projectsettingsdialog.Ui_ProjectSettingsDialog()
+        self.ui.setupUi(self)
+        
+        self.projectName = self.findChild(QLineEdit, "projectName")
+        self.baseDirectory = self.findChild(qtwidgets.FileLineEdit, "baseDirectory")
+        self.baseDirectory.mode = qtwidgets.FileLineEdit.ExistingDirectoryMode
+    
+        self.resourceDirectory = self.findChild(qtwidgets.FileLineEdit, "resourceDirectory")
+        self.resourceDirectory.mode = qtwidgets.FileLineEdit.ExistingDirectoryMode
+        self.resourceDirectoryApplyButton = self.findChild(QPushButton, "resourceDirectoryApplyButton")
+        self.resourceDirectoryApplyButton.pressed.connect(self.slot_applyResourceDirectory)
+    
+        self.imagesetsPath = self.findChild(qtwidgets.FileLineEdit, "imagesetsPath")
+        self.imagesetsPath.mode = qtwidgets.FileLineEdit.ExistingDirectoryMode
+        self.fontsPath = self.findChild(qtwidgets.FileLineEdit, "fontsPath")
+        self.fontsPath.mode = qtwidgets.FileLineEdit.ExistingDirectoryMode
+        self.looknfeelsPath = self.findChild(qtwidgets.FileLineEdit, "looknfeelsPath")
+        self.looknfeelsPath.mode = qtwidgets.FileLineEdit.ExistingDirectoryMode
+        self.schemesPath = self.findChild(qtwidgets.FileLineEdit, "schemesPath")
+        self.schemesPath.mode = qtwidgets.FileLineEdit.ExistingDirectoryMode
+        self.layoutsPath = self.findChild(qtwidgets.FileLineEdit, "layoutsPath")
+        self.layoutsPath.mode = qtwidgets.FileLineEdit.ExistingDirectoryMode
+        
+        self.projectName.setText(project.name)
+        self.baseDirectory.setText(project.getAbsolutePathOf(""))
+        self.imagesetsPath.setText(project.getAbsolutePathOf(project.imagesetsPath))
+        self.fontsPath.setText(project.getAbsolutePathOf(project.fontsPath))
+        self.looknfeelsPath.setText(project.getAbsolutePathOf(project.looknfeelsPath))
+        self.schemesPath.setText(project.getAbsolutePathOf(project.schemesPath))
+        self.layoutsPath.setText(project.getAbsolutePathOf(project.layoutsPath))
+        
+    def apply(self, project):
+        project.name = self.projectName.text()
+        absBaseDir = os.path.normpath(os.path.abspath(self.baseDirectory.text()))
+        project.baseDirectory = os.path.relpath(absBaseDir, os.path.dirname(project.projectFilePath))
+        
+        project.imagesetsPath = os.path.relpath(self.imagesetsPath.text(), absBaseDir)
+        project.fontsPath = os.path.relpath(self.fontsPath.text(), absBaseDir)
+        project.looknfeelsPath = os.path.relpath(self.looknfeelsPath.text(), absBaseDir)
+        project.schemesPath = os.path.relpath(self.schemesPath.text(), absBaseDir)
+        project.layoutsPath = os.path.relpath(self.layoutsPath.text(), absBaseDir)
+        
+    def slot_applyResourceDirectory(self):
+        resourceDir = os.path.normpath(os.path.abspath(self.resourceDirectory.text()))
+        
+        self.imagesetsPath.setText(os.path.join(resourceDir, "imagesets"))
+        self.fontsPath.setText(os.path.join(resourceDir, "fonts"))
+        self.looknfeelsPath.setText(os.path.join(resourceDir, "looknfeel"))
+        self.schemesPath.setText(os.path.join(resourceDir, "schemes"))
+        self.layoutsPath.setText(os.path.join(resourceDir, "layouts"))
+        

@@ -24,11 +24,9 @@ import ui.mainwindow
 import os
 
 import project
+import cegui
 import filesystembrowser
 import propertyinspector
-
-# this module is responsible for managing CEGUI instance
-import cegui
 
 import tab
 # the various editor imports
@@ -97,6 +95,11 @@ class MainWindow(QMainWindow):
         # when this starts up, no project is opened, hence you can't close the current project
         self.closeProjectAction.setEnabled(False)
         
+        self.projectSettingsAction = self.findChild(QAction, "actionProjectSettings")
+        self.projectSettingsAction.triggered.connect(self.slot_projectSettings)
+        # when this starts up, no project is opened, hence you can't view/edit settings of the current project
+        self.projectSettingsAction.setEnabled(False)
+        
         self.saveAction = self.findChild(QAction, "actionSave")
         self.saveAction.setEnabled(False)
         self.saveAllAction = self.findChild(QAction, "actionSaveAll")
@@ -133,6 +136,8 @@ class MainWindow(QMainWindow):
         self.project.load(path)
         self.projectManager.setProject(self.project)
         self.fileSystemBrowser.setDirectory(self.project.getAbsolutePathOf(""))
+        # sync up the cegui instance
+        self.ceguiWidget.syncToProject(self.project)
         
         # project has been opened
         # enable the project management tree
@@ -141,6 +146,7 @@ class MainWindow(QMainWindow):
         # and enable respective actions
         self.saveProjectAction.setEnabled(True)
         self.closeProjectAction.setEnabled(True)
+        self.projectSettingsAction.setEnabled(True)
         
     def closeProject(self):
         self.projectManager.setProject(None)
@@ -152,6 +158,7 @@ class MainWindow(QMainWindow):
         
         self.saveProjectAction.setEnabled(False)
         self.closeProjectAction.setEnabled(False)
+        self.projectSettingsAction.setEnabled(False)
         
     def saveProject(self):
         self.project.save()
@@ -241,9 +248,6 @@ class MainWindow(QMainWindow):
             newProject.save()
             
             self.openProject(newProject.projectFilePath)
-        
-    def slot_saveProject(self):
-        self.saveProject()
     
     def slot_openProject(self):
         if self.project:
@@ -270,6 +274,9 @@ class MainWindow(QMainWindow):
             # user actually selected something ;-)
             
             self.openProject(file)
+    
+    def slot_saveProject(self):
+        self.saveProject()
         
     def slot_closeProject(self):
         assert(self.project)
@@ -289,6 +296,13 @@ class MainWindow(QMainWindow):
                 return
             
         self.closeProject()
+        
+    def slot_projectSettings(self):
+        dialog = project.ProjectSettingsDialog(self.project)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            dialog.apply(self.project)
+            self.ceguiWidget.syncToProject(self.project)
     
     def slot_openFile(self, absolutePath):
         self.openFileTab(absolutePath)

@@ -185,6 +185,7 @@ class PropertySetInspector(QWidget):
         self.view = self.findChild(QTreeView, "view")
         self.model = QStandardItemModel()
         self.model.setColumnCount(2)
+        self.model.setHorizontalHeaderLabels(["Name", "Value"])
         self.view.setItemDelegate(PropertySetInspectorDelegate(self))
         self.view.setModel(self.model)
         

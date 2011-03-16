@@ -102,6 +102,7 @@ class CEGUIWidget(QGLWidget):
         
         self.debugInfo = CEGUIDebugInfo(self)
         #self.logger = CEGUIQtLogger(self.debugInfo)
+        self.glInit()
     
     def __del__(self):
         #PyCEGUIOpenGLRenderer.OpenGLRenderer.destroySystem()
@@ -137,6 +138,22 @@ class CEGUIWidget(QGLWidget):
         parser = self.system.getXMLParser()
         if parser.isPropertyPresent("SchemaDefaultResourceGroup"):
             parser.setProperty("SchemaDefaultResourceGroup", "schemas")
+            
+    def syncToProject(self, project):
+        # destroy all previous resources (if any)
+        PyCEGUI.ImageManager.getSingleton().destroyAll()
+        PyCEGUI.FontManager.getSingleton().destroyAll()
+        PyCEGUI.SchemeManager.getSingleton().destroyAll()
+        #PyCEGUI.WidgetLookManager.getSingleton().destroyAll()
+        PyCEGUI.WindowManager.getSingleton().destroyAllWindows()
+        
+        self.setResourceGroupDirectory("imagesets", project.getAbsolutePathOf(project.imagesetsPath))
+        self.setResourceGroupDirectory("fonts", project.getAbsolutePathOf(project.fontsPath))
+        self.setResourceGroupDirectory("schemes", project.getAbsolutePathOf(project.schemesPath))
+        self.setResourceGroupDirectory("looknfeels", project.getAbsolutePathOf(project.looknfeelsPath))
+        self.setResourceGroupDirectory("layouts", project.getAbsolutePathOf(project.layoutsPath))
+        
+        self.createAllSchemes()
         
     def createAllSchemes(self):
         # I think just creating the schemes should be alright, schemes will
@@ -177,17 +194,6 @@ class CEGUIWidget(QGLWidget):
         self.lastBoxUpdateTime = time.time() - self.debugInfo.boxUpdateInterval
         
         self.setDefaultResourceGroups()
-        
-        self.createAllSchemes()
-        
-        root = PyCEGUI.WindowManager.getSingleton().createWindow("DefaultWindow")
-        root.setPosition(PyCEGUI.UVector2(PyCEGUI.UDim(0, 0), PyCEGUI.UDim(0, 0)))
-        root.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(1, 0), PyCEGUI.UDim(1, 0)))
-        self.system.setGUISheet(root)
-        
-        self.wnd = PyCEGUI.WindowManager.getSingleton().createWindow("TaharezLook/FrameWindow")
-        self.wnd.setSize(PyCEGUI.UVector2(PyCEGUI.UDim(0.5, 0), PyCEGUI.UDim(0.5, 0)))
-        root.addChild(self.wnd)
         
     def resizeGL(self, width, height):
         self.system.notifyDisplaySizeChanged(PyCEGUI.Sizef(width, height))
