@@ -38,8 +38,11 @@ import about
 class MainWindow(QMainWindow):
     """The central window of the application"""
     
-    def __init__(self):
+    def __init__(self, app):
         super(MainWindow, self).__init__()
+        
+        self.app = app
+        self.settings = QSettings("CEGUI", "CEED")
         
         self.editorFactories = []
         self.activeEditor = None
@@ -77,6 +80,8 @@ class MainWindow(QMainWindow):
         self.registerEditorFactories()
         
         propertyinspector.PropertyInspectorManager.loadMappings("data/StockMappings.xml")
+        
+        self.restoreSettings()
     
     def connectActions(self):
         self.newProjectAction = self.findChild(QAction, "actionNewProject")
@@ -116,6 +121,9 @@ class MainWindow(QMainWindow):
         
         self.licenseAction = self.findChild(QAction, "actionLicense")
         self.licenseAction.triggered.connect(self.slot_license)
+        
+        self.quitAction = self.findChild(QAction, "actionQuit")
+        self.quitAction.triggered.connect(self.slot_quit)
         
     def connectSignals(self):
         self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiWidget.debugInfo.setVisible)
@@ -223,6 +231,20 @@ class MainWindow(QMainWindow):
     def closeEditorTab(self, editor):
         editor.finalise()
         self.tabEditors.remove(editor)
+    
+    def saveSettings(self):
+        self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.setValue("state", self.saveState())
+        
+    def restoreSettings(self):
+        if self.settings.contains("geometry"):
+            self.restoreGeometry(self.settings.value("geometry"))
+        if self.settings.contains("state"):
+            self.restoreState(self.settings.value("state"))
+        
+    def quit(self):
+        self.saveSettings()
+        self.app.exit(0)
         
     def slot_newProject(self):
         if self.project:
@@ -372,5 +394,10 @@ class MainWindow(QMainWindow):
     def slot_license(self):
         dialog = about.LicenseDialog()
         dialog.exec_()
-        
+    
+    def slot_quit(self):
+        self.quit()
+
+    def closeEvent(self, event):
+        self.slot_quit()
     

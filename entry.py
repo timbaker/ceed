@@ -39,7 +39,7 @@ def main():
     splash.show()
     splash.showMessage("Testing...")
 
-    wnd = mainwindow.MainWindow()
+    wnd = mainwindow.MainWindow(app)
     wnd.show()
     
     splash.finish(wnd)
