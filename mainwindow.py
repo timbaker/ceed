@@ -32,6 +32,7 @@ import tab
 # the various editor imports
 import bitmapeditor
 import texteditor
+import imageseteditor
 
 import about
 
@@ -43,8 +44,13 @@ class MainWindow(QMainWindow):
         
         self.app = app
         self.settings = QSettings("CEGUI", "CEED")
+
+        self.editorFactories = [
+            bitmapeditor.BitmapTabbedEditorFactory(),
+            texteditor.TextTabbedEditorFactory(),
+            imageseteditor.ImagesetTabbedEditorFactory()
+        ]
         
-        self.editorFactories = []
         self.activeEditor = None
         self.project = None
         
@@ -76,8 +82,6 @@ class MainWindow(QMainWindow):
         
         self.connectActions()
         self.connectSignals()
-        
-        self.registerEditorFactories()
         
         propertyinspector.PropertyInspectorManager.loadMappings("data/StockMappings.xml")
         
@@ -173,16 +177,6 @@ class MainWindow(QMainWindow):
     
     def saveProjectAs(self, newPath):
         self.project.save(newPath)
-    
-    def registerEditorFactory(self, factory):
-        self.editorFactories.append(factory)
-        
-    def unregisterEditorFactory(self, factory):
-        self.editorFactories.remove(factory)
-    
-    def registerEditorFactories(self):
-        self.registerEditorFactory(bitmapeditor.BitmapTabbedEditorFactory())
-        self.registerEditorFactory(texteditor.TextTabbedEditorFactory())
         
     def createEditorForFile(self, absolutePath):
         ret = None
