@@ -120,7 +120,7 @@ class MainWindow(QMainWindow):
         self.undoAction.triggered.connect(self.slot_undo)
         self.undoAction.setEnabled(False)
         self.redoAction = self.findChild(QAction, "actionRedo")
-        self.undoAction.triggered.connect(self.slot_redo)
+        self.redoAction.triggered.connect(self.slot_redo)
         self.redoAction.setEnabled(False)
         
         self.licenseAction = self.findChild(QAction, "actionLicense")

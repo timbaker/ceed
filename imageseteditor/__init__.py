@@ -22,6 +22,8 @@ import tab
 
 from xml.etree import ElementTree
 
+import undo
+
 class ImageLabel(QGraphicsTextItem):
     def __init__(self, parent):
         super(ImageLabel, self).__init__()
@@ -37,19 +39,28 @@ class ImageLabel(QGraphicsTextItem):
         super(ImageLabel, self).paint(painter, option, widget)
 
 class ImageEntry(QGraphicsRectItem):
-    def __init__(self, parentImageset):
+    def __init__(self, parent):
         super(ImageEntry, self).__init__()
+        
+        self.parent = parent
         
         self.setAcceptsHoverEvents(True)
         pen = QPen()
         pen.setColor(QColor(Qt.lightGray))
         self.setPen(pen)
+        
         self.isHovered = False
         
-        self.setParentItem(parentImageset)
-        self.setFlags(QGraphicsItem.ItemIsFocusable |
+        # used for undo
+        self.potentialMove = False
+        self.oldPosition = None
+        
+        self.setParentItem(parent)
+        self.setFlags(QGraphicsItem.ItemIsMovable |
+                      QGraphicsItem.ItemIsFocusable |
                       QGraphicsItem.ItemIsSelectable |
-                      QGraphicsItem.ItemClipsChildrenToShape)
+                      QGraphicsItem.ItemClipsChildrenToShape |
+                      QGraphicsItem.ItemSendsGeometryChanges)
         
         self.name = "Unknown"
         
@@ -68,23 +79,44 @@ class ImageEntry(QGraphicsRectItem):
         
     def saveToElement(self):
         pass
-    
+
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSelectedHasChanged:
             if value:
                 self.label.setVisible(True)
+                self.setZValue(self.zValue() + 1)
                 #self.setFlags(self.flags() | QGraphicsItem.ItemIsMovable)
             else:
                 if not self.isHovered:
                     self.label.setVisible(False)
-                #self.setFlags(self.flags() ^ QGraphicsItem.ItemIsMovable)
+                self.setZValue(self.zValue() - 1)
+
+        elif change == QGraphicsItem.ItemPositionChange:
+            if self.potentialMove and not self.oldPosition:
+                self.oldPosition = self.pos()
+            
+            newPosition = value
+
+            rect = self.parent.boundingRect()
+            rect.setWidth(rect.width() - self.rect().width())
+            rect.setHeight(rect.height() - self.rect().height())
+            
+            if not rect.contains(newPosition):
+                newPosition.setX(min(rect.right(), max(newPosition.x(), rect.left())))
+                newPosition.setY(min(rect.bottom(), max(newPosition.y(), rect.top())))
+            
+            # now round the position to pixels
+            newPosition.setX(round(newPosition.x()))
+            newPosition.setY(round(newPosition.y()))
+
+            return newPosition
 
         return super(ImageEntry, self).itemChange(change, value)
     
     def hoverEnterEvent(self, event):
         super(ImageEntry, self).hoverEnterEvent(event)
         
-        self.setZValue(1)
+        self.setZValue(self.zValue() + 1)
         
         pen = QPen()
         pen.setColor(QColor(Qt.black))
@@ -93,9 +125,14 @@ class ImageEntry(QGraphicsRectItem):
         self.label.setVisible(True)
         self.label.setOpacity(0.3)
         
+        self.parent.parent.mainWindow.statusBar().showMessage("Image: '%s'\t\tXPos: %i, YPos: %i, Width: %i, Height: %i" %
+                                                              (self.name, self.pos().x(), self.pos().y(), self.rect().width(), self.rect().height()))
+        
         self.isHovered = True
     
     def hoverLeaveEvent(self, event):
+        self.parent.parent.mainWindow.statusBar().clearMessage()
+        
         self.isHovered = False
         
         if not self.isSelected():
@@ -107,7 +144,7 @@ class ImageEntry(QGraphicsRectItem):
         pen.setColor(QColor(Qt.lightGray))
         self.setPen(pen)
         
-        self.setZValue(0)
+        self.setZValue(self.zValue() - 1)
         
         super(ImageEntry, self).hoverLeaveEvent(event)
         
@@ -118,6 +155,7 @@ class ImagesetEntry(QGraphicsPixmapItem):
         self.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
         
         self.parent = parent
+        self.imageEntries = []
         
         self.transparencyBackground = QGraphicsRectItem()
         self.transparencyBackground.setParentItem(self)
@@ -136,6 +174,14 @@ class ImagesetEntry(QGraphicsPixmapItem):
         self.transparencyBackground.setBrush(transparentBrush)
         self.transparencyBackground.setPen(QPen(QColor(Qt.transparent)))
         
+    def getImageEntry(self, name):
+        for image in self.imageEntries:
+            if image.name == name:
+                return image
+            
+        assert(False)
+        return None
+        
     def loadFromElement(self, element):
         self.setPixmap(QPixmap("datafiles/imagesets/%s" % (element.get("Imagefile", ""))))
         self.transparencyBackground.setRect(self.boundingRect())
@@ -143,14 +189,19 @@ class ImagesetEntry(QGraphicsPixmapItem):
         for imageElement in element.findall("Image"):
             image = ImageEntry(self)
             image.loadFromElement(imageElement)
+            self.imageEntries.append(image)
     
     def saveToElement(self, element):
-        for image in self.childItems():
+        for image in self.imageEntries:
             element.append(image.saveToElement())
 
 class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
     def __init__(self, filePath):
         tab.TabbedEditor.__init__(self, filePath)
+        
+        self.undoStack = QUndoStack()
+        self.undoStack.canUndoChanged.connect(self.slot_undoAvailable)
+        self.undoStack.canRedoChanged.connect(self.slot_redoAvailable)
         
         self.scene = QGraphicsScene()
         QGraphicsView.__init__(self, self.scene)
@@ -169,9 +220,15 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
             
         tree = ElementTree.parse(self.filePath)
         root = tree.getroot()
-            
+
+        self.undoStack.clear()
+        
         self.imagesetEntry = ImagesetEntry(self)
         self.imagesetEntry.loadFromElement(root)
+        
+        boundingRect = self.imagesetEntry.boundingRect()
+        boundingRect.adjust(-100, -100, 100, 100)
+        self.scene.setSceneRect(boundingRect)
         
         self.scene.addItem(self.imagesetEntry)
     
@@ -179,9 +236,20 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
         super(ImagesetTabbedEditor, self).finalise()
         
         self.tabWidget = None
+    
+    def deactivate(self):
+        self.mainWindow.statusBar().clearMessage()
+        
+        super(ImagesetTabbedEditor, self).deactivate()
         
     def hasChanges(self):
         return False
+    
+    def undo(self):
+        self.undoStack.undo()
+        
+    def redo(self):
+        self.undoStack.redo()
     
     def performZoom(self):
         transform = QTransform()
@@ -205,16 +273,38 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
         self.performZoom()
     
     def mousePressEvent(self, event): 
-        if event.buttons() != Qt.MiddleButton: 
+        if event.buttons() != Qt.MiddleButton:
             super(ImagesetTabbedEditor, self).mousePressEvent(event) 
+            
+            if event.buttons() & Qt.LeftButton:
+                for imageEntry in self.scene.selectedItems():
+                    imageEntry.potentialMove = True
+                    imageEntry.oldPosition = None
         else:
             self.lastMousePosition = event.pos()
       
     def mouseReleaseEvent(self, event):
-        if event.buttons() != Qt.MiddleButton: 
+        if event.buttons() != Qt.MiddleButton:
             super(ImagesetTabbedEditor, self).mouseReleaseEvent(event)
+            
+            imageNames = []
+            oldPositions = {}
+            newPositions = {}
+            
+            for imageEntry in self.scene.selectedItems():
+                if imageEntry.oldPosition:
+                    imageNames.append(imageEntry.name)
+                    oldPositions[imageEntry.name] = imageEntry.oldPosition
+                    newPositions[imageEntry.name] = imageEntry.pos()
+                    
+                imageEntry.potentialMove = False
+                imageEntry.oldPosition = None
+            
+            if len(imageNames) > 0:
+                cmd = undo.MoveCommand(self.imagesetEntry, imageNames, oldPositions, newPositions)
+                self.undoStack.push(cmd)
         else:
-            pass 
+            pass
     
     def mouseMoveEvent(self, event): 
         if event.buttons() != Qt.MiddleButton: 
@@ -229,10 +319,97 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
             self.lastMousePosition = event.pos() 
     
     def wheelEvent(self, event):
+        if event.delta() == 0:
+            return
+        
         if event.delta() > 0:
             self.zoomIn()
         else:
             self.zoomOut()
+            
+    def keyReleaseEvent(self, event):
+        handled = False
+        
+        if event.key() in [Qt.Key_A, Qt.Key_D, Qt.Key_W, Qt.Key_S]:
+            selection = self.scene.selectedItems()
+            
+            if len(selection) > 0:
+                dx = 0
+                dy = 0
+                
+                if event.key() == Qt.Key_A:
+                    dx -= 1
+                elif event.key() == Qt.Key_D:
+                    dx += 1
+                elif event.key() == Qt.Key_W:
+                    dy -= 1
+                elif event.key() == Qt.Key_S:
+                    dy += 1
+                
+                if event.modifiers() & Qt.ControlModifier:
+                    dx *= 10
+                    dy *= 10
+                    
+                if dx != 0 or dy != 0:
+                    handled = True
+                    
+                    imageNames = []
+                    oldPositions = {}
+                    newPositions = {}
+                    
+                    for imageEntry in selection:
+                        imageNames.append(imageEntry.name)
+                        oldPositions[imageEntry.name] = imageEntry.pos()
+                        imageEntry.setPos(imageEntry.pos() + QPointF(dx, dy))
+                        newPositions[imageEntry.name] = imageEntry.pos()
+                        
+                    cmd = undo.MoveCommand(self.imagesetEntry, imageNames, oldPositions, newPositions)
+                    self.undoStack.push(cmd)
+                    
+        elif event.key() == Qt.Key_Q:
+            selection = self.scene.selectedItems()
+            
+            if len(selection) == 1:
+                handled = True
+                rect = selection[0].boundingRect()
+                rect.translate(selection[0].pos())
+                
+                overlappingItems = self.scene.items(rect)
+            
+                # first we stack everything before our current selection
+                successor = None
+                for item in overlappingItems:
+                    if item == selection[0] or item.parentItem() != selection[0].parentItem():
+                        continue
+                    
+                    if not successor and isinstance(item, ImageEntry):
+                        successor = item
+                        
+                if successor:
+                    for item in overlappingItems:
+                        if item == successor or item.parentItem() != successor.parentItem():
+                            continue
+                        
+                        successor.stackBefore(item)
+                    
+                    # we deselect current
+                    selection[0].setSelected(False)
+                    selection[0].hoverLeaveEvent(None)
+                    # and select what was at the bottom (thus getting this to the top)    
+                    successor.setSelected(True)
+                    successor.hoverEnterEvent(None)
+                        
+        if not handled:
+            super(ImagesetTabbedEditor, self).keyReleaseEvent(event)
+            
+        else:
+            event.accept()
+            
+    def slot_undoAvailable(self, available):
+        self.mainWindow.undoAction.setEnabled(available)
+        
+    def slot_redoAvailable(self, available):
+        self.mainWindow.redoAction.setEnabled(available)
 
 class ImagesetTabbedEditorFactory(tab.TabbedEditorFactory):
     def canEditFile(self, filePath):
