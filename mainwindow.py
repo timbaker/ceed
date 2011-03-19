@@ -333,6 +333,8 @@ class MainWindow(QMainWindow):
         # we disable them by default
         self.undoAction.setEnabled(False)
         self.redoAction.setEnabled(False)
+        # we also clear the status bar
+        self.statusBar().clearMessage()
 
         if wdt:
             self.saveAction.setEnabled(True)
