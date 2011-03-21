@@ -24,7 +24,43 @@ import tab
 import undo
 import editing
 
+import ui.imageseteditor.dockwidget
+
 from xml.etree import ElementTree
+
+class ImagesetEditorDockWidget(QDockWidget):
+    def __init__(self, parent):
+        super(ImagesetEditorDockWidget, self).__init__()
+        
+        self.parent = parent
+        
+        self.ui = ui.imageseteditor.dockwidget.Ui_DockWidget()
+        self.ui.setupUi(self)
+        
+        self.list = self.findChild(QListWidget, "list")
+        self.list.itemSelectionChanged.connect(self.slot_itemSelectionChanged)
+        self.list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        
+    def setImagesetEntry(self, imagesetEntry):
+        self.imagesetEntry = imagesetEntry
+        
+    def refresh(self):
+        self.list.clear()
+        
+        for imageEntry in self.imagesetEntry.imageEntries:
+            self.list.addItem(imageEntry.name)
+
+    def slot_itemSelectionChanged(self):
+        self.parent.scene.clearSelection()
+        
+        imageEntryNames = self.list.selectedItems()
+        for imageEntryName in imageEntryNames:
+            imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryName.text())
+            imageEntry.setSelected(True)
+            
+        if len(imageEntryNames) == 1:
+            imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryNames[0].text())
+            self.parent.centerOn(imageEntry)
 
 class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
     def __init__(self, filePath):
@@ -45,9 +81,17 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
         self.tabWidget = self
         
         self.setupToolBar()
+        self.dockWidget = ImagesetEditorDockWidget(self)
     
     def setupToolBar(self):
         self.toolBar = QToolBar()
+        
+        self.editOffsetsAction = QAction(QIcon("icons/imageset_editing/edit_offsets.png"), "Show and edit offsets", self.toolBar)
+        self.editOffsetsAction.setCheckable(True)
+        self.editOffsetsAction.toggled.connect(self.slot_toggleEditOffsets)
+        self.toolBar.addAction(self.editOffsetsAction)
+        
+        self.toolBar.addSeparator() # ---------------------------
         
         self.cycleOverlappingAction = QAction(QIcon("icons/imageset_editing/cycle_overlapping.png"), "Cycle overlapping images (Q)", self.toolBar)
         self.cycleOverlappingAction.triggered.connect(self.cycleOverlappingImages)
@@ -83,6 +127,9 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
         self.scene.setSceneRect(boundingRect)
         
         self.scene.addItem(self.imagesetEntry)
+        
+        self.dockWidget.setImagesetEntry(self.imagesetEntry)
+        self.dockWidget.refresh()
     
     def finalise(self):        
         super(ImagesetTabbedEditor, self).finalise()
@@ -95,10 +142,14 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
         self.mainWindow.undoAction.setEnabled(self.undoStack.canUndo())
         self.mainWindow.redoAction.setEnabled(self.undoStack.canRedo())
         
-        self.mainWindow.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolBar)
+        self.mainWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
         self.toolBar.show()
         
+        self.mainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.dockWidget)
+        self.dockWidget.setVisible(True)
+        
     def deactivate(self):
+        self.mainWindow.removeDockWidget(self.dockWidget)
         self.mainWindow.removeToolBar(self.toolBar)
         
         super(ImagesetTabbedEditor, self).deactivate()
@@ -156,6 +207,32 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
         
         # we didn't handle this
         return False
+    
+    def resizeImageEntries(self, imageEntries, topLeftDelta, bottomRightDelta):
+        if (topLeftDelta.manhattanLength() > 0 or bottomRightDelta.manhattanLength() > 0) and len(imageEntries) > 0:
+            imageNames = []
+            oldPositions = {}
+            oldRects = {}
+            newPositions = {}
+            newRects = {}
+            
+            for imageEntry in imageEntries:
+                imageNames.append(imageEntry.name)
+                oldPositions[imageEntry.name] = imageEntry.pos()
+                newPositions[imageEntry.name] = imageEntry.pos() - topLeftDelta
+                oldRects[imageEntry.name] = imageEntry.rect()
+                newRect = imageEntry.rect()
+                newRect.setBottomRight(newRect.bottomRight() - topLeftDelta + bottomRightDelta)
+                newRects[imageEntry.name] = newRect
+                
+            cmd = undo.GeometryChangeCommand(self.imagesetEntry, imageNames, oldPositions, oldRects, newPositions, newRects)
+            self.undoStack.push(cmd)
+            
+            # we handled this
+            return True
+        
+        # we didn't handle this
+        return False
         
     def cycleOverlappingImages(self):
         selection = self.scene.selectedItems()
@@ -200,9 +277,10 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
             super(ImagesetTabbedEditor, self).mousePressEvent(event) 
             
             if event.buttons() & Qt.LeftButton:
-                for imageEntry in self.scene.selectedItems():
-                    imageEntry.potentialMove = True
-                    imageEntry.oldPosition = None
+                for selectedItem in self.scene.selectedItems():
+                    # selectedItem could be ImageEntry or ImageOffset!                    
+                    selectedItem.potentialMove = True
+                    selectedItem.oldPosition = None
         else:
             self.lastMousePosition = event.pos()
     
@@ -211,20 +289,38 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
             super(ImagesetTabbedEditor, self).mouseReleaseEvent(event)
             
             imageNames = []
-            oldPositions = {}
-            newPositions = {}
+            imageOldPositions = {}
+            imageNewPositions = {}
             
-            for imageEntry in self.scene.selectedItems():
-                if imageEntry.oldPosition:
-                    imageNames.append(imageEntry.name)
-                    oldPositions[imageEntry.name] = imageEntry.oldPosition
-                    newPositions[imageEntry.name] = imageEntry.pos()
+            offsetNames = []
+            offsetOldPositions = {}
+            offsetNewPositions = {}
+            
+            for selectedItem in self.scene.selectedItems():
+                if isinstance(selectedItem, editing.ImageEntry):
+                    if selectedItem.oldPosition:
+                        imageNames.append(selectedItem.name)
+                        imageOldPositions[selectedItem.name] = selectedItem.oldPosition
+                        imageNewPositions[selectedItem.name] = selectedItem.pos()
+                        
+                    selectedItem.potentialMove = False
+                    selectedItem.oldPosition = None
                     
-                imageEntry.potentialMove = False
-                imageEntry.oldPosition = None
+                elif isinstance(selectedItem, editing.ImageOffset):
+                    if selectedItem.oldPosition:
+                        offsetNames.append(selectedItem.parent.name)
+                        offsetOldPositions[selectedItem.parent.name] = selectedItem.oldPosition
+                        offsetNewPositions[selectedItem.parent.name] = selectedItem.pos()
+                        
+                    selectedItem.potentialMove = False
+                    selectedItem.oldPosition = None
             
             if len(imageNames) > 0:
-                cmd = undo.MoveCommand(self.imagesetEntry, imageNames, oldPositions, newPositions)
+                cmd = undo.MoveCommand(self.imagesetEntry, imageNames, imageOldPositions, imageNewPositions)
+                self.undoStack.push(cmd)
+                
+            if len(offsetNames) > 0:
+                cmd = undo.OffsetMoveCommand(self.imagesetEntry, offsetNames, offsetOldPositions, offsetNewPositions)
                 self.undoStack.push(cmd)
         else:
             pass
@@ -271,7 +367,10 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
                 if event.modifiers() & Qt.ControlModifier:
                     delta *= 10
                 
-                handled = self.moveImageEntries(selection, delta)
+                if event.modifiers() & Qt.ShiftModifier:
+                    handled = self.resizeImageEntries(selection, QPointF(0, 0), delta)
+                else:
+                    handled = self.moveImageEntries(selection, delta)
                 
         elif event.key() == Qt.Key_Q:
             handled = self.cycleOverlappingImages()
@@ -287,6 +386,11 @@ class ImagesetTabbedEditor(tab.TabbedEditor, QGraphicsView):
         
     def slot_redoAvailable(self, available):
         self.mainWindow.redoAction.setEnabled(available)
+        
+    def slot_toggleEditOffsets(self, enabled):
+        self.scene.clearSelection()
+        
+        self.imagesetEntry.showOffsets = enabled
 
 class ImagesetTabbedEditorFactory(tab.TabbedEditorFactory):
     def canEditFile(self, filePath):

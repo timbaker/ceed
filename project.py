@@ -73,7 +73,7 @@ class Item(QStandardItem):
         else:
             raise Exception("Unknown item type '%s'" % (type))
             
-        return item       
+        return item
     
     def saveToElement(self):
         return ElementTree.Element("Item")

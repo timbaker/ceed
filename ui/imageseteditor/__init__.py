@@ -16,36 +16,4 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-import sys
-from PySide.QtGui import QApplication, QSplashScreen
-
-import compileuifiles
-
-def main():
-    # first recompile all UI files to ensure they are up to date
-    compileuifiles.compileUIFiles("./ui")
-    compileuifiles.compileUIFiles("./ui/imageseteditor")
-    compileuifiles.compileUIFiles("./ui/widgets")
-
-    # import mainwindow after UI files have been recompiled
-    import mainwindow
-    
-    app = QApplication(sys.argv)
-    app.setOrganizationName("CEGUI")
-    app.setOrganizationDomain("cegui.org.uk")
-    app.setApplicationName("CEED - CEGUI editor")
-    app.setApplicationVersion("0.1 - WIP")
-    
-    splash = QSplashScreen()
-    splash.show()
-    splash.showMessage("Testing...")
-
-    wnd = mainwindow.MainWindow(app)
-    wnd.show()
-    
-    splash.finish(wnd)
-    
-    app.exec_()
-
-if __name__ == "__main__":
-    main()
+# package stub file

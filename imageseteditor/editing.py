@@ -23,6 +23,8 @@ class ImageLabel(QGraphicsTextItem):
     def __init__(self, parent):
         super(ImageLabel, self).__init__()
         
+        self.parent = parent
+        
         self.setParentItem(parent)
         self.setFlags(QGraphicsItem.ItemIgnoresTransformations)
         self.setOpacity(0.8)
@@ -32,6 +34,65 @@ class ImageLabel(QGraphicsTextItem):
         painter.drawRect(self.boundingRect())
         
         super(ImageLabel, self).paint(painter, option, widget)
+
+class ImageOffset(QGraphicsPixmapItem):
+    def __init__(self, parent):
+        super(ImageOffset, self).__init__()
+        
+        self.parent = parent
+        
+        self.setAcceptsHoverEvents(True)
+        
+        self.setParentItem(parent)
+        self.setFlags(QGraphicsItem.ItemIsMovable |
+                      QGraphicsItem.ItemIsSelectable | 
+                      QGraphicsItem.ItemIgnoresTransformations |
+                      QGraphicsItem.ItemSendsGeometryChanges)
+        
+        self.setPixmap(QPixmap("icons/imageset_editing/offset_crosshair.png"))
+        self.setOffset(-7, -7)
+        self.setZValue(1)
+        
+        self.isHovered = False
+        
+        # used for undo
+        self.potentialMove = False
+        self.oldPosition = None
+        
+        self.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
+        self.setVisible(False)
+        
+    def itemChange(self, change, value):    
+        if change == QGraphicsItem.ItemPositionChange:
+            if self.potentialMove and not self.oldPosition:
+                self.oldPosition = self.pos()
+            
+            newPosition = value
+            
+            # now round the position to pixels
+            newPosition.setX(round(newPosition.x() - 0.5) + 0.5)
+            newPosition.setY(round(newPosition.y() - 0.5) + 0.5)
+
+            return newPosition
+        
+        elif change == QGraphicsItem.ItemSelectedChange:
+            if not value:
+                if not self.parent.isSelected():
+                    self.setVisible(False)
+            else:
+                self.setVisible(True)
+        
+        return super(ImageOffset, self).itemChange(change, value)
+
+    def hoverEnterEvent(self, event):
+        super(ImageOffset, self).hoverEnterEvent(event)
+        
+        self.isHovered = True
+    
+    def hoverLeaveEvent(self, event):
+        self.isHovered = False
+
+        super(ImageOffset, self).hoverLeaveEvent(event)
 
 class ImageEntry(QGraphicsRectItem):
     def __init__(self, parent):
@@ -52,14 +113,14 @@ class ImageEntry(QGraphicsRectItem):
         
         self.setParentItem(parent)
         self.setFlags(QGraphicsItem.ItemIsMovable |
-                      QGraphicsItem.ItemIsFocusable |
                       QGraphicsItem.ItemIsSelectable |
-                      QGraphicsItem.ItemClipsChildrenToShape |
+                      #QGraphicsItem.ItemClipsChildrenToShape |
                       QGraphicsItem.ItemSendsGeometryChanges)
         
         self.name = "Unknown"
         
         self.label = ImageLabel(self)
+        self.offset = ImageOffset(self)
 
     def loadFromElement(self, element):
         self.name = element.get("Name", "Unknown")
@@ -72,6 +133,8 @@ class ImageEntry(QGraphicsRectItem):
         self.label.setPlainText(self.name)
         self.label.setVisible(False)
         
+        self.offset.setPos(-float(element.get("XOffset", 0)) + 0.5, -float(element.get("YOffset", 0)) + 0.5)
+        
     def saveToElement(self):
         pass
 
@@ -79,11 +142,18 @@ class ImageEntry(QGraphicsRectItem):
         if change == QGraphicsItem.ItemSelectedHasChanged:
             if value:
                 self.label.setVisible(True)
+                
+                if self.parent.showOffsets:
+                    self.offset.setVisible(True)
+                
                 self.setZValue(self.zValue() + 1)
-                #self.setFlags(self.flags() | QGraphicsItem.ItemIsMovable)
             else:
                 if not self.isHovered:
                     self.label.setVisible(False)
+                
+                if not self.offset.isSelected() and not self.offset.isHovered:
+                    self.offset.setVisible(False)
+                    
                 self.setZValue(self.zValue() - 1)
 
         elif change == QGraphicsItem.ItemPositionChange:
@@ -132,7 +202,6 @@ class ImageEntry(QGraphicsRectItem):
         
         if not self.isSelected():
             self.label.setVisible(False)
-        
         self.label.setOpacity(0.8)
         
         pen = QPen()
@@ -151,6 +220,8 @@ class ImagesetEntry(QGraphicsPixmapItem):
         
         self.parent = parent
         self.imageEntries = []
+        
+        self.showOffsets = False
         
         self.transparencyBackground = QGraphicsRectItem()
         self.transparencyBackground.setParentItem(self)
@@ -176,7 +247,7 @@ class ImagesetEntry(QGraphicsPixmapItem):
             
         assert(False)
         return None
-        
+            
     def loadFromElement(self, element):
         self.setPixmap(QPixmap("datafiles/imagesets/%s" % (element.get("Imagefile", ""))))
         self.transparencyBackground.setRect(self.boundingRect())

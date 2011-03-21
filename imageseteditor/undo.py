@@ -42,4 +42,56 @@ class MoveCommand(commands.UndoCommand):
             image.setPos(self.newPositions[imageName])
             
         super(MoveCommand, self).redo()
+
+class GeometryChangeCommand(commands.UndoCommand):
+    def __init__(self, imageset, imageNames, oldPositions, oldRects, newPositions, newRects):
+        super(GeometryChangeCommand, self).__init__()
+        
+        self.imageset = imageset
+        
+        self.imageNames = imageNames
+        self.oldPositions = oldPositions
+        self.oldRects = oldRects
+        self.newPositions = newPositions
+        self.newRects = newRects
+        
+    def undo(self):
+        super(GeometryChangeCommand, self).undo()
+        
+        for imageName in self.imageNames:
+            image = self.imageset.getImageEntry(imageName)
+            image.setPos(self.oldPositions[imageName])
+            image.setRect(self.oldRects[imageName])
+            
+    def redo(self):
+        for imageName in self.imageNames:
+            image = self.imageset.getImageEntry(imageName)
+            image.setPos(self.newPositions[imageName])
+            image.setRect(self.newRects[imageName])
+            
+        super(GeometryChangeCommand, self).redo()
+
+class OffsetMoveCommand(commands.UndoCommand):
+    def __init__(self, imageset, imageNames, oldPositions, newPositions):
+        super(OffsetMoveCommand, self).__init__()
+        
+        self.imageset = imageset
+        
+        self.imageNames = imageNames
+        self.oldPositions = oldPositions
+        self.newPositions = newPositions
+        
+    def undo(self):
+        super(OffsetMoveCommand, self).undo()
+        
+        for imageName in self.imageNames:
+            image = self.imageset.getImageEntry(imageName)
+            image.offset.setPos(self.oldPositions[imageName])
+            
+    def redo(self):
+        for imageName in self.imageNames:
+            image = self.imageset.getImageEntry(imageName)
+            image.offset.setPos(self.newPositions[imageName])
+            
+        super(OffsetMoveCommand, self).redo()
         
