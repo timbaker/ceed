@@ -19,6 +19,8 @@
 ##
 # This module contains interfaces needed to run editors tabs (multi-file editing)
 
+from PySide.QtGui import QUndoStack
+
 import os.path
 
 class TabbedEditor(object):
@@ -149,6 +151,41 @@ class TabbedEditor(object):
         
     def redo(self):
         pass
+
+class UndoStackTabbedEditor(TabbedEditor):
+    """Used for tabbed editors that have one shared undo stack. This saves a lot
+    of boilerplate code for undo/redo action synchronisation and the undo/redo itself
+    """
+    
+    def __init__(self, filePath):
+        super(UndoStackTabbedEditor, self).__init__(filePath)
+        
+        self.undoStack = QUndoStack()
+        self.undoStack.canUndoChanged.connect(self.slot_undoAvailable)
+        self.undoStack.canRedoChanged.connect(self.slot_redoAvailable)
+        
+    def initialise(self, mainWindow):
+        super(UndoStackTabbedEditor, self).initialise(mainWindow)
+        
+        self.undoStack.clear()
+        
+    def activate(self):
+        super(UndoStackTabbedEditor, self).activate()
+        
+        self.mainWindow.undoAction.setEnabled(self.undoStack.canUndo())
+        self.mainWindow.redoAction.setEnabled(self.undoStack.canRedo())
+        
+    def undo(self):
+        self.undoStack.undo()
+        
+    def redo(self):
+        self.undoStack.redo()
+
+    def slot_undoAvailable(self, available):
+        self.mainWindow.undoAction.setEnabled(available)
+        
+    def slot_redoAvailable(self, available):
+        self.mainWindow.redoAction.setEnabled(available)
 
 class TabbedEditorFactory(object):
     """Constructs instances of TabbedEditor (multiple instances of one TabbedEditor
