@@ -93,10 +93,8 @@ class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
         assert(self.currentTabIndex != -1)
         
     def slot_currentChanged(self, newTabIndex):
-        if self.ignoreCurrentChanged:
-            return
-        
-        cmd = ModeSwitchCommand(self, self.currentTabIndex, newTabIndex)
-        self.undoStack.push(cmd)
+        if not self.ignoreCurrentChanged:
+            cmd = ModeSwitchCommand(self, self.currentTabIndex, newTabIndex)
+            self.undoStack.push(cmd)
         
         self.currentTabIndex = newTabIndex
