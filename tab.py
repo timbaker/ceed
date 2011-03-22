@@ -182,10 +182,14 @@ class UndoStackTabbedEditor(TabbedEditor):
         self.undoStack.redo()
 
     def slot_undoAvailable(self, available):
-        self.mainWindow.undoAction.setEnabled(available)
+        # hasattr because this might be called even before initialise is called!
+        if hasattr(self, "mainWindow"):
+            self.mainWindow.undoAction.setEnabled(available)
         
     def slot_redoAvailable(self, available):
-        self.mainWindow.redoAction.setEnabled(available)
+        # hasattr because this might be called even before initialise is called!
+        if hasattr(self, "mainWindow"):
+            self.mainWindow.redoAction.setEnabled(available)
 
 class TabbedEditorFactory(object):
     """Constructs instances of TabbedEditor (multiple instances of one TabbedEditor

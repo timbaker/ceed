@@ -19,4 +19,6 @@
 from PySide.QtGui import QUndoCommand
 
 class UndoCommand(QUndoCommand):
-    pass
+    def __init__(self):
+        super(UndoCommand, self).__init__()
+    

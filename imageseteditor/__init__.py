@@ -20,24 +20,25 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 
 import tab
+import mixedtab
 
 import undo
 import visual
 
 from xml.etree import ElementTree
 
-class ImagesetTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
+class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
     """Binds all imageset editing functionality together
     """
     def __init__(self, filePath):
-        tab.UndoStackTabbedEditor.__init__(self, filePath)
-        QTabWidget.__init__(self)
-        
-        self.setTabPosition(QTabWidget.South)
-        self.setTabShape(QTabWidget.Triangular)
+        super(ImagesetTabbedEditor, self).__init__(filePath)
         
         self.visual = visual.VisualEditing(self)
         self.addTab(self.visual, "Visual")
+        
+        self.addTab(QWidget(), "XML")
+        self.addTab(QWidget(), "C++")
+        self.addTab(QWidget(), "Python")
         
         self.tabWidget = self
     
