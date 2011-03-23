@@ -18,6 +18,8 @@
 
 import commands
 
+import copy
+
 class MoveCommand(commands.UndoCommand):
     def __init__(self, visual, imageNames, oldPositions, newPositions):
         super(MoveCommand, self).__init__()
@@ -93,4 +95,56 @@ class OffsetMoveCommand(commands.UndoCommand):
             image.offset.setPos(self.newPositions[imageName])
             
         super(OffsetMoveCommand, self).redo()
+        
+class XMLEditingCommand(commands.UndoCommand):
+    """Extremely memory hungry implementation for now, I have to figure out how to use my own
+    QUndoStack with QTextDocument in the future to fix this.
+    """
+    def __init__(self, xmlediting, oldText, oldCursor, newText, newCursor, totalChange):
+        super(XMLEditingCommand, self).__init__()
+        
+        self.xmlediting = xmlediting
+        self.oldText = oldText
+        self.oldCursor = copy.copy(oldCursor)
+        self.newText = newText
+        self.newCursor = copy.copy(newCursor)
+        
+        self.totalChange = totalChange
+        
+        self.dryRun = True
+        
+    def id(self):
+        return 1000
+        
+    def mergeWith(self, cmd):
+        assert(self.xmlediting == cmd.xmlediting)
+        
+        # TODO: 10 chars for now for testing
+        if self.totalChange + cmd.totalChange < 10:
+            self.totalChange += cmd.totalChange
+            self.newText = cmd.newText
+            self.newCursor = cmd.newCursor
+            
+            return True
+        
+        return False
+        
+    def undo(self):
+        super(XMLEditingCommand, self).undo()
+        
+        self.xmlediting.ignoreUndoCommands = True
+        self.xmlediting.setPlainText(self.oldText)
+        self.xmlediting.ignoreUndoCommands = False
+        #self.xmlediting.setTextCursor(self.oldCursor)
+        
+    def redo(self):
+        if not self.dryRun:
+            self.xmlediting.ignoreUndoCommands = True
+            self.xmlediting.setPlainText(self.newText)
+            self.xmlediting.ignoreUndoCommands = False
+            #self.xmlediting.setTextCursor(self.newCursor)
+            
+        self.dryRun = False
+
+        super(XMLEditingCommand, self).redo()
         

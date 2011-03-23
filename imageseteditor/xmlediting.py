@@ -29,6 +29,10 @@ class XMLEditing(xmledit.XMLEditWidget):
         super(XMLEditing, self).__init__()
         
         self.parent = parent
+        self.ignoreUndoCommands = False
+        
+        self.document().setUndoRedoEnabled(False)
+        self.document().contentsChange.connect(self.slot_contentsChange)
         
     def refreshFromVisual(self):
         # taken from ElementLib
@@ -50,7 +54,11 @@ class XMLEditing(xmledit.XMLEditWidget):
         
         element = self.parent.visual.imagesetEntry.saveToElement()
         indent(element)
-        self.setText(ElementTree.tostring(element, "utf-8"))
+        
+        self.ignoreUndoCommands = True
+        # We purposefully use selectAll and insertPlainText to play well with undo redo across editing modes
+        self.setPlainText(ElementTree.tostring(element, "utf-8"))
+        self.ignoreUndoCommands = False
         
     def propagateChangesToVisual(self):
         element = ElementTree.fromstring(self.document().toPlainText())
@@ -66,4 +74,16 @@ class XMLEditing(xmledit.XMLEditWidget):
         super(XMLEditing, self).hideEvent(event)
         
         self.propagateChangesToVisual()
+    
+    def slot_contentsChange(self, position, charsRemoved, charsAdded):
+        if not self.ignoreUndoCommands:
+            totalChange = charsRemoved + charsAdded
+            
+            cmd = undo.XMLEditingCommand(self, self.lastUndoText, self.lastTextCursor,
+                                               self.toPlainText(), self.textCursor(),
+                                               totalChange)
+            self.parent.undoStack.push(cmd)
+            
+        self.lastUndoText = self.toPlainText()
+        self.lastTextCursor = self.textCursor()
         
