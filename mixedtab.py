@@ -33,11 +33,6 @@ class ModeSwitchCommand(commands.UndoCommand):
         self.oldTabIndex = oldTabIndex
         self.newTabIndex = newTabIndex
         
-    def __del__(self):
-        #super(ModeSwitchCommand, self).__del__()
-        
-        print "DEL!"
-        
     def undo(self):
         super(ModeSwitchCommand, self).undo()
         
