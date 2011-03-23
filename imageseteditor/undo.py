@@ -17,10 +17,19 @@
 ################################################################################
 
 import commands
-
 import copy
+import math
+
+from PySide import QtCore
+
+idbase = 1100
 
 class MoveCommand(commands.UndoCommand):
+    """This command simply moves given images from old position to the new
+    You can use GeometryChangeCommand instead and use the same rects as old new as current rects,
+    this is there just to save memory.
+    """
+    
     def __init__(self, visual, imageNames, oldPositions, newPositions):
         super(MoveCommand, self).__init__()
         
@@ -29,6 +38,33 @@ class MoveCommand(commands.UndoCommand):
         self.imageNames = imageNames
         self.oldPositions = oldPositions
         self.newPositions = newPositions
+        
+        self.biggestDelta = 0
+        
+        for (imageName, oldPosition) in self.oldPositions.iteritems():
+            positionDelta = oldPosition - self.newPositions[imageName]
+            
+            delta = math.sqrt(positionDelta.x() * positionDelta.x() + positionDelta.y() * positionDelta.y())
+            if delta > self.biggestDelta:
+                self.biggestDelta = delta
+                
+    def id(self):
+        return idbase + 1
+        
+    def mergeWith(self, cmd):
+        if self.imageNames == cmd.imageNames:
+            # good, images match
+                    
+            combinedBiggestDelta = self.biggestDelta + cmd.biggestDelta
+            # TODO: 50 used just for testing!
+            if combinedBiggestDelta < 50:
+                # if the combined delta is reasonably small, we can merge the commands
+                self.newPositions = cmd.newPositions
+                self.biggestDelta = combinedBiggestDelta
+                
+                return True
+            
+        return False
         
     def undo(self):
         super(MoveCommand, self).undo()
@@ -45,6 +81,10 @@ class MoveCommand(commands.UndoCommand):
         super(MoveCommand, self).redo()
 
 class GeometryChangeCommand(commands.UndoCommand):
+    """Changes geometry of given images, that means that positions as well as rects might change
+    Can even implement MoveCommand as a special case but would eat more RAM.
+    """
+    
     def __init__(self, visual, imageNames, oldPositions, oldRects, newPositions, newRects):
         super(GeometryChangeCommand, self).__init__()
         
@@ -55,6 +95,47 @@ class GeometryChangeCommand(commands.UndoCommand):
         self.oldRects = oldRects
         self.newPositions = newPositions
         self.newRects = newRects
+        
+        self.biggestMoveDelta = 0
+        
+        for (imageName, oldPosition) in self.oldPositions.iteritems():
+            moveDelta = oldPosition - self.newPositions[imageName]
+            
+            delta = math.sqrt(moveDelta.x() * moveDelta.x() + moveDelta.y() * moveDelta.y())
+            if delta > self.biggestMoveDelta:
+                self.biggestMoveDelta = delta
+        
+        self.biggestResizeDelta = 0
+        
+        for (imageName, oldRect) in self.oldRects.iteritems():
+            resizeDelta = oldRect.bottomRight() - self.newRects[imageName].bottomRight()
+            
+            delta = math.sqrt(resizeDelta.x() * resizeDelta.x() + resizeDelta.y() * resizeDelta.y())
+            if delta > self.biggestResizeDelta:
+                self.biggestResizeDelta = delta
+        
+    def id(self):
+        return idbase + 2
+    
+    def mergeWith(self, cmd):
+        if self.imageNames == cmd.imageNames:
+            # good, images match
+                    
+            combinedBiggestMoveDelta = self.biggestMoveDelta + cmd.biggestMoveDelta
+            combinedBiggestResizeDelta = self.biggestResizeDelta + cmd.biggestResizeDelta
+            
+            # TODO: 50 and 20 are used just for testing!
+            if combinedBiggestMoveDelta < 50 and combinedBiggestResizeDelta < 20:
+                # if the combined deltas area reasonably small, we can merge the commands
+                self.newPositions = cmd.newPositions
+                self.newRects = cmd.newRects
+                
+                self.biggestMoveDelta = combinedBiggestMoveDelta
+                self.biggestResizeDelta = combinedBiggestResizeDelta
+                
+                return True
+            
+        return False
         
     def undo(self):
         super(GeometryChangeCommand, self).undo()
@@ -81,6 +162,33 @@ class OffsetMoveCommand(commands.UndoCommand):
         self.imageNames = imageNames
         self.oldPositions = oldPositions
         self.newPositions = newPositions
+        
+        self.biggestDelta = 0
+        
+        for (imageName, oldPosition) in self.oldPositions.iteritems():
+            positionDelta = oldPosition - self.newPositions[imageName]
+            
+            delta = math.sqrt(positionDelta.x() * positionDelta.x() + positionDelta.y() * positionDelta.y())
+            if delta > self.biggestDelta:
+                self.biggestDelta = delta
+        
+    def id(self):
+        return idbase + 3
+        
+    def mergeWith(self, cmd):
+        if self.imageNames == cmd.imageNames:
+            # good, images match
+                    
+            combinedBiggestDelta = self.biggestDelta + cmd.biggestDelta
+            # TODO: 10 used just for testing!
+            if combinedBiggestDelta < 10:
+                # if the combined delta is reasonably small, we can merge the commands
+                self.newPositions = cmd.newPositions
+                self.biggestDelta = combinedBiggestDelta
+                
+                return True
+            
+        return False
         
     def undo(self):
         super(OffsetMoveCommand, self).undo()
@@ -114,7 +222,7 @@ class XMLEditingCommand(commands.UndoCommand):
         self.dryRun = True
         
     def id(self):
-        return 1000
+        return idbase + 4
         
     def mergeWith(self, cmd):
         assert(self.xmlediting == cmd.xmlediting)
