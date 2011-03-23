@@ -19,6 +19,8 @@
 from PySide.QtGui import *
 from PySide.QtCore import *
 
+from xml.etree import ElementTree
+
 import undo
 
 import ui.imageseteditor.dockwidget
@@ -140,7 +142,23 @@ class ImageEntry(QGraphicsRectItem):
         self.offset.setPos(-float(element.get("XOffset", 0)) + 0.5, -float(element.get("YOffset", 0)) + 0.5)
         
     def saveToElement(self):
-        pass
+        ret = ElementTree.Element("Image")
+        
+        ret.set("Name", self.name)
+        
+        ret.set("XPos", str(int(self.pos().x())))
+        ret.set("YPos", str(int(self.pos().y())))
+        ret.set("Width", str(int(self.rect().width())))
+        ret.set("Height", str(int(self.rect().height())))
+        
+        xoffset = int(-(self.offset.pos().x() - 0.5))
+        yoffset = int(-(self.offset.pos().y() - 0.5))
+        # we write none or both
+        if xoffset != 0 or yoffset != 0:
+            ret.set("XOffset", str(xoffset))
+            ret.set("YOffset", str(yoffset))
+
+        return ret
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSelectedHasChanged:
@@ -222,6 +240,8 @@ class ImagesetEntry(QGraphicsPixmapItem):
     def __init__(self, parent):
         super(ImagesetEntry, self).__init__()
         
+        self.imageFile = ""
+        
         self.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
         
         self.parent = parent
@@ -255,7 +275,8 @@ class ImagesetEntry(QGraphicsPixmapItem):
         return None
             
     def loadFromElement(self, element):
-        self.setPixmap(QPixmap("datafiles/imagesets/%s" % (element.get("Imagefile", ""))))
+        self.imageFile = element.get("Imagefile", "")
+        self.setPixmap(QPixmap("datafiles/imagesets/%s" % (self.imageFile)))
         self.transparencyBackground.setRect(self.boundingRect())
         
         for imageElement in element.findall("Image"):
@@ -263,9 +284,15 @@ class ImagesetEntry(QGraphicsPixmapItem):
             image.loadFromElement(imageElement)
             self.imageEntries.append(image)
     
-    def saveToElement(self, element):
+    def saveToElement(self):
+        ret = ElementTree.Element("Imageset")
+        
+        ret.set("Imagefile", self.imageFile)
+        
         for image in self.imageEntries:
-            element.append(image.saveToElement())
+            ret.append(image.saveToElement())
+            
+        return ret
 
 class ImagesetEditorDockWidget(QDockWidget):
     """Provides list of images, property editing of currently selected image and create/delete
@@ -349,8 +376,14 @@ class VisualEditing(QGraphicsView):
         self.toolBar.addAction(self.zoomOutAction)
     
     def initialise(self, rootElement):
+        self.loadImagesetEntryFromElement(rootElement)
+        
+    def loadImagesetEntryFromElement(self, element):
+        self.scene.clear()
+        
+        self.imagesetEntry = None
         self.imagesetEntry = ImagesetEntry(self)
-        self.imagesetEntry.loadFromElement(rootElement)
+        self.imagesetEntry.loadFromElement(element)
         
         boundingRect = self.imagesetEntry.boundingRect()
         boundingRect.adjust(-100, -100, 100, 100)
@@ -397,7 +430,7 @@ class VisualEditing(QGraphicsView):
                 oldPositions[imageEntry.name] = imageEntry.pos()
                 newPositions[imageEntry.name] = imageEntry.pos() + delta
                 
-            cmd = undo.MoveCommand(self.imagesetEntry, imageNames, oldPositions, newPositions)
+            cmd = undo.MoveCommand(self, imageNames, oldPositions, newPositions)
             self.parent.undoStack.push(cmd)
             
             # we handled this
@@ -423,7 +456,7 @@ class VisualEditing(QGraphicsView):
                 newRect.setBottomRight(newRect.bottomRight() - topLeftDelta + bottomRightDelta)
                 newRects[imageEntry.name] = newRect
                 
-            cmd = undo.GeometryChangeCommand(self.imagesetEntry, imageNames, oldPositions, oldRects, newPositions, newRects)
+            cmd = undo.GeometryChangeCommand(self, imageNames, oldPositions, oldRects, newPositions, newRects)
             self.parent.undoStack.push(cmd)
             
             # we handled this
@@ -470,6 +503,18 @@ class VisualEditing(QGraphicsView):
         # we didn't handle this
         return False
     
+    def showEvent(self, event):
+        super(VisualEditing, self).showEvent(event)
+        
+        self.dockWidget.setEnabled(True)
+        self.toolBar.setEnabled(True)
+    
+    def hideEvent(self, event):
+        self.dockWidget.setEnabled(False)
+        self.toolBar.setEnabled(False)
+        
+        super(VisualEditing, self).hideEvent(event)
+    
     def mousePressEvent(self, event): 
         if event.buttons() != Qt.MiddleButton:
             super(VisualEditing, self).mousePressEvent(event) 
@@ -514,11 +559,11 @@ class VisualEditing(QGraphicsView):
                     selectedItem.oldPosition = None
             
             if len(imageNames) > 0:
-                cmd = undo.MoveCommand(self.imagesetEntry, imageNames, imageOldPositions, imageNewPositions)
+                cmd = undo.MoveCommand(self, imageNames, imageOldPositions, imageNewPositions)
                 self.parent.undoStack.push(cmd)
                 
             if len(offsetNames) > 0:
-                cmd = undo.OffsetMoveCommand(self.imagesetEntry, offsetNames, offsetOldPositions, offsetNewPositions)
+                cmd = undo.OffsetMoveCommand(self, offsetNames, offsetOldPositions, offsetNewPositions)
                 self.parent.undoStack.push(cmd)
         else:
             pass

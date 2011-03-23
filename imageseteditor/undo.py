@@ -19,10 +19,10 @@
 import commands
 
 class MoveCommand(commands.UndoCommand):
-    def __init__(self, imageset, imageNames, oldPositions, newPositions):
+    def __init__(self, visual, imageNames, oldPositions, newPositions):
         super(MoveCommand, self).__init__()
         
-        self.imageset = imageset
+        self.visual = visual
         
         self.imageNames = imageNames
         self.oldPositions = oldPositions
@@ -32,21 +32,21 @@ class MoveCommand(commands.UndoCommand):
         super(MoveCommand, self).undo()
         
         for imageName in self.imageNames:
-            image = self.imageset.getImageEntry(imageName)
+            image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.setPos(self.oldPositions[imageName])
             
     def redo(self):
         for imageName in self.imageNames:
-            image = self.imageset.getImageEntry(imageName)
+            image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.setPos(self.newPositions[imageName])
             
         super(MoveCommand, self).redo()
 
 class GeometryChangeCommand(commands.UndoCommand):
-    def __init__(self, imageset, imageNames, oldPositions, oldRects, newPositions, newRects):
+    def __init__(self, visual, imageNames, oldPositions, oldRects, newPositions, newRects):
         super(GeometryChangeCommand, self).__init__()
         
-        self.imageset = imageset
+        self.visual = visual
         
         self.imageNames = imageNames
         self.oldPositions = oldPositions
@@ -58,23 +58,23 @@ class GeometryChangeCommand(commands.UndoCommand):
         super(GeometryChangeCommand, self).undo()
         
         for imageName in self.imageNames:
-            image = self.imageset.getImageEntry(imageName)
+            image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.setPos(self.oldPositions[imageName])
             image.setRect(self.oldRects[imageName])
             
     def redo(self):
         for imageName in self.imageNames:
-            image = self.imageset.getImageEntry(imageName)
+            image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.setPos(self.newPositions[imageName])
             image.setRect(self.newRects[imageName])
             
         super(GeometryChangeCommand, self).redo()
 
 class OffsetMoveCommand(commands.UndoCommand):
-    def __init__(self, imageset, imageNames, oldPositions, newPositions):
+    def __init__(self, visual, imageNames, oldPositions, newPositions):
         super(OffsetMoveCommand, self).__init__()
         
-        self.imageset = imageset
+        self.visual = visual
         
         self.imageNames = imageNames
         self.oldPositions = oldPositions
@@ -84,12 +84,12 @@ class OffsetMoveCommand(commands.UndoCommand):
         super(OffsetMoveCommand, self).undo()
         
         for imageName in self.imageNames:
-            image = self.imageset.getImageEntry(imageName)
+            image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.offset.setPos(self.oldPositions[imageName])
             
     def redo(self):
         for imageName in self.imageNames:
-            image = self.imageset.getImageEntry(imageName)
+            image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.offset.setPos(self.newPositions[imageName])
             
         super(OffsetMoveCommand, self).redo()

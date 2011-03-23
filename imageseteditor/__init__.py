@@ -23,7 +23,9 @@ import tab
 import mixedtab
 
 import undo
+
 import visual
+import xmlediting
 
 from xml.etree import ElementTree
 
@@ -36,9 +38,8 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
         self.visual = visual.VisualEditing(self)
         self.addTab(self.visual, "Visual")
         
-        self.addTab(QWidget(), "XML")
-        self.addTab(QWidget(), "C++")
-        self.addTab(QWidget(), "Python")
+        self.xml = xmlediting.XMLEditing(self)
+        self.addTab(self.xml, "XML")
         
         self.tabWidget = self
     
