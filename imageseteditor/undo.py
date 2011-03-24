@@ -241,7 +241,39 @@ class OffsetMoveCommand(commands.UndoCommand):
             image.offset.setPos(self.newPositions[imageName])
             
         super(OffsetMoveCommand, self).redo()
+
+class RenameCommand(commands.UndoCommand):
+    """Changes name of one image (always just one image!)
+    """
+    
+    def __init__(self, visual, oldName, newName):
+        super(RenameCommand, self).__init__()
         
+        self.visual = visual
+        
+        self.oldName = oldName
+        self.newName = newName
+        
+        # we never merge renames so no need for separate refreshText method
+        self.setText("Rename '%s' to '%s'" % (self.oldName, self.newName))
+                
+    def id(self):
+        return idbase + 4
+    
+    def undo(self):
+        super(RenameCommand, self).undo()
+        
+        imageEntry = self.visual.imagesetEntry.getImageEntry(self.newName)
+        imageEntry.label.setPlainText(self.oldName)
+        imageEntry.updateListItem()
+    
+    def redo(self):        
+        imageEntry = self.visual.imagesetEntry.getImageEntry(self.oldName)
+        imageEntry.label.setPlainText(self.newName)
+        imageEntry.updateListItem()
+   
+        super(RenameCommand, self).redo()
+
 class XMLEditingCommand(commands.UndoCommand):
     """Extremely memory hungry implementation for now, I have to figure out how to use my own
     QUndoStack with QTextDocument in the future to fix this.
@@ -268,7 +300,7 @@ class XMLEditingCommand(commands.UndoCommand):
             self.setText("XML edit, changed %i characters" % (self.totalChange))
         
     def id(self):
-        return idbase + 4
+        return idbase + 5
         
     def mergeWith(self, cmd):
         assert(self.xmlediting == cmd.xmlediting)

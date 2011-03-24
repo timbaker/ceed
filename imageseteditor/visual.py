@@ -36,6 +36,8 @@ class ImageLabel(QGraphicsTextItem):
         self.setFlags(QGraphicsItem.ItemIgnoresTransformations)
         self.setOpacity(0.8)
         
+        self.setPlainText("Unknown")
+        
     def paint(self, painter, option, widget):
         painter.fillRect(self.boundingRect(), QColor(Qt.white))
         painter.drawRect(self.boundingRect())
@@ -124,22 +126,21 @@ class ImageEntry(QGraphicsRectItem):
                       #QGraphicsItem.ItemClipsChildrenToShape |
                       QGraphicsItem.ItemSendsGeometryChanges)
         
-        self.name = "Unknown"
-        
         self.label = ImageLabel(self)
         self.offset = ImageOffset(self)
         
         self.listItem = None
+        
+    def getName(self):
+        return self.label.toPlainText()
 
     def loadFromElement(self, element):
-        self.name = element.get("Name", "Unknown")
-        
         self.setPos(float(element.get("XPos", 0)), float(element.get("YPos", 0)))
         self.setRect(0, 0,
                      float(element.get("Width", 1)), float(element.get("Height", 1))
         )
         
-        self.label.setPlainText(self.name)
+        self.label.setPlainText(element.get("Name", "Unknown"))
         self.label.setVisible(False)
         
         self.offset.setPos(-float(element.get("XOffset", 0)) + 0.5, -float(element.get("YOffset", 0)) + 0.5)
@@ -147,7 +148,7 @@ class ImageEntry(QGraphicsRectItem):
     def saveToElement(self):
         ret = ElementTree.Element("Image")
         
-        ret.set("Name", self.name)
+        ret.set("Name", self.getName())
         
         ret.set("XPos", str(int(self.pos().x())))
         ret.set("YPos", str(int(self.pos().y())))
@@ -171,7 +172,7 @@ class ImageEntry(QGraphicsRectItem):
         if not self.listItem:
             return
         
-        self.listItem.setText(self.name)
+        self.listItem.setText(self.getName())
         
         previewWidth = 24
         previewHeight = 24
@@ -267,7 +268,7 @@ class ImageEntry(QGraphicsRectItem):
         
         # TODO: very unreadable
         self.parent.parent.parent.mainWindow.statusBar().showMessage("Image: '%s'\t\tXPos: %i, YPos: %i, Width: %i, Height: %i" %
-                                                              (self.name, self.pos().x(), self.pos().y(), self.rect().width(), self.rect().height()))
+                                                                     (self.getName(), self.pos().x(), self.pos().y(), self.rect().width(), self.rect().height()))
         
         self.isHovered = True
     
@@ -321,7 +322,7 @@ class ImagesetEntry(QGraphicsPixmapItem):
         
     def getImageEntry(self, name):
         for image in self.imageEntries:
-            if image.name == name:
+            if image.getName() == name:
                 return image
             
         assert(False)
@@ -364,6 +365,7 @@ class ImagesetEditorDockWidget(QDockWidget):
         
         self.list = self.findChild(QListWidget, "list")
         self.list.itemSelectionChanged.connect(self.slot_itemSelectionChanged)
+        self.list.itemChanged.connect(self.slot_itemChanged)
         
         self.selectionUnderway = False
         self.selectionSynchronisationUnderway = False
@@ -381,6 +383,7 @@ class ImagesetEditorDockWidget(QDockWidget):
                           Qt.ItemIsEditable |
                           Qt.ItemIsEnabled)
             
+            item.imageEntry = imageEntry
             imageEntry.listItem = item
             # nothing is selected (list was cleared) so we don't need to call
             #  the whole updateDockWidget here
@@ -392,7 +395,7 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.filterChanged(self.filterBox.text())
 
     def slot_itemSelectionChanged(self):
-        # we are getting syncrhonised with the visual editing pane, do not interfere
+        # we are getting synchronised with the visual editing pane, do not interfere
         if self.selectionSynchronisationUnderway:
             return
         
@@ -401,14 +404,27 @@ class ImagesetEditorDockWidget(QDockWidget):
         
         imageEntryNames = self.list.selectedItems()
         for imageEntryName in imageEntryNames:
-            imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryName.text())
+            imageEntry = imageEntryName.imageEntry
+            #imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryName.text())
             imageEntry.setSelected(True)
             
         if len(imageEntryNames) == 1:
-            imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryNames[0].text())
+            #imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryNames[0].text())
+            imageEntry = imageEntryNames[0].imageEntry
             self.parent.centerOn(imageEntry)
             
         self.selectionUnderway = False
+        
+    def slot_itemChanged(self, item):
+        oldName = item.imageEntry.getName()
+        newName = item.text()
+        
+        if oldName == newName:
+            # most likely caused by RenameCommand doing it's work or is bogus anyways
+            return
+        
+        cmd = undo.RenameCommand(self.parent, oldName, newName)
+        self.parent.parent.undoStack.push(cmd)
     
     def filterChanged(self, filter):
         # we append star at the end by default (makes image filtering much more practical)
@@ -517,9 +533,9 @@ class VisualEditing(QGraphicsView):
             newPositions = {}
             
             for imageEntry in imageEntries:
-                imageNames.append(imageEntry.name)
-                oldPositions[imageEntry.name] = imageEntry.pos()
-                newPositions[imageEntry.name] = imageEntry.pos() + delta
+                imageNames.append(imageEntry.getName())
+                oldPositions[imageEntry.getName()] = imageEntry.pos()
+                newPositions[imageEntry.getName()] = imageEntry.pos() + delta
                 
             cmd = undo.MoveCommand(self, imageNames, oldPositions, newPositions)
             self.parent.undoStack.push(cmd)
@@ -539,13 +555,13 @@ class VisualEditing(QGraphicsView):
             newRects = {}
             
             for imageEntry in imageEntries:
-                imageNames.append(imageEntry.name)
-                oldPositions[imageEntry.name] = imageEntry.pos()
-                newPositions[imageEntry.name] = imageEntry.pos() - topLeftDelta
-                oldRects[imageEntry.name] = imageEntry.rect()
+                imageNames.append(imageEntry.getName())
+                oldPositions[imageEntry.getName()] = imageEntry.pos()
+                newPositions[imageEntry.getName()] = imageEntry.pos() - topLeftDelta
+                oldRects[imageEntry.getName()] = imageEntry.rect()
                 newRect = imageEntry.rect()
                 newRect.setBottomRight(newRect.bottomRight() - topLeftDelta + bottomRightDelta)
-                newRects[imageEntry.name] = newRect
+                newRects[imageEntry.getName()] = newRect
                 
             cmd = undo.GeometryChangeCommand(self, imageNames, oldPositions, oldRects, newPositions, newRects)
             self.parent.undoStack.push(cmd)
@@ -633,18 +649,18 @@ class VisualEditing(QGraphicsView):
             for selectedItem in self.scene.selectedItems():
                 if isinstance(selectedItem, ImageEntry):
                     if selectedItem.oldPosition:
-                        imageNames.append(selectedItem.name)
-                        imageOldPositions[selectedItem.name] = selectedItem.oldPosition
-                        imageNewPositions[selectedItem.name] = selectedItem.pos()
+                        imageNames.append(selectedItem.getName())
+                        imageOldPositions[selectedItem.getName()] = selectedItem.oldPosition
+                        imageNewPositions[selectedItem.getName()] = selectedItem.pos()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
                     
                 elif isinstance(selectedItem, ImageOffset):
                     if selectedItem.oldPosition:
-                        offsetNames.append(selectedItem.parent.name)
-                        offsetOldPositions[selectedItem.parent.name] = selectedItem.oldPosition
-                        offsetNewPositions[selectedItem.parent.name] = selectedItem.pos()
+                        offsetNames.append(selectedItem.parent.getName())
+                        offsetOldPositions[selectedItem.parent.getName()] = selectedItem.oldPosition
+                        offsetNewPositions[selectedItem.parent.getName()] = selectedItem.pos()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
