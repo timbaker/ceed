@@ -127,6 +127,8 @@ class ImageEntry(QGraphicsRectItem):
         
         self.label = ImageLabel(self)
         self.offset = ImageOffset(self)
+        
+        self.listItem = None
 
     def loadFromElement(self, element):
         self.name = element.get("Name", "Unknown")
@@ -159,6 +161,30 @@ class ImageEntry(QGraphicsRectItem):
             ret.set("YOffset", str(yoffset))
 
         return ret
+
+    def getPixmap(self):
+        return self.parent.pixmap().copy(int(self.pos().x()), int(self.pos().y()),
+                                         int(self.rect().width()), int(self.rect().height()))
+
+    def updateListItem(self):
+        if not self.listItem:
+            return
+        
+        self.listItem.setText(self.name)
+        
+        previewWidth = 24
+        previewHeight = 16
+        
+        preview = QPixmap(previewWidth, previewHeight)
+        preview.fill(Qt.transparent)
+        painter = QPainter(preview)
+        scaledPixmap = self.getPixmap().scaled(QSize(previewWidth, previewHeight), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        painter.drawPixmap((previewWidth - scaledPixmap.width()) / 2,
+                           (previewHeight - scaledPixmap.height()) / 2,
+                           scaledPixmap)
+        painter.end()
+        
+        self.listItem.setIcon(QIcon(preview))
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSelectedHasChanged:
@@ -196,7 +222,7 @@ class ImageEntry(QGraphicsRectItem):
             newPosition.setX(round(newPosition.x()))
             newPosition.setY(round(newPosition.y()))
 
-            return newPosition
+            return newPosition            
 
         return super(ImageEntry, self).itemChange(change, value)
     
@@ -308,7 +334,6 @@ class ImagesetEditorDockWidget(QDockWidget):
         
         self.list = self.findChild(QListWidget, "list")
         self.list.itemSelectionChanged.connect(self.slot_itemSelectionChanged)
-        self.list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         
     def setImagesetEntry(self, imagesetEntry):
         self.imagesetEntry = imagesetEntry
@@ -317,7 +342,16 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.list.clear()
         
         for imageEntry in self.imagesetEntry.imageEntries:
-            self.list.addItem(imageEntry.name)
+            item = QListWidgetItem()
+            
+            item.setFlags(Qt.ItemIsSelectable |
+                          Qt.ItemIsEditable |
+                          Qt.ItemIsEnabled)
+            
+            imageEntry.listItem = item
+            imageEntry.updateListItem()
+            
+            self.list.addItem(item)
 
     def slot_itemSelectionChanged(self):
         self.parent.scene.clearSelection()
