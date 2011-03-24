@@ -23,6 +23,7 @@ import ui.mainwindow
 
 import os
 
+import commands
 import project
 import cegui
 import filesystembrowser
@@ -79,6 +80,9 @@ class MainWindow(QMainWindow):
         self.fileSystemBrowser = filesystembrowser.FileSystemBrowser()
         self.fileSystemBrowser.setVisible(False)
         self.addDockWidget(Qt.RightDockWidgetArea, self.fileSystemBrowser)
+        
+        self.undoViewer = commands.UndoViewer()
+        self.addDockWidget(Qt.RightDockWidgetArea, self.undoViewer)
         
         self.connectActions()
         self.connectSignals()

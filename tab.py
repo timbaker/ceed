@@ -96,6 +96,7 @@ class TabbedEditor(object):
         self.active = True
 
         self.mainWindow.activeEditor = self
+        self.mainWindow.undoViewer.setUndoStack(self.getUndoStack())
         
     def deactivate(self):
         """The tab gets "off stage", user switched to another tab.
@@ -151,6 +152,13 @@ class TabbedEditor(object):
         
     def redo(self):
         pass
+    
+    def getUndoStack(self):
+        """Returns UndoStack or None is the tabbed editor doesn't have undo stacks.
+        This is useful for QUndoView
+        """
+        
+        return None
 
 class UndoStackTabbedEditor(TabbedEditor):
     """Used for tabbed editors that have one shared undo stack. This saves a lot
@@ -161,6 +169,12 @@ class UndoStackTabbedEditor(TabbedEditor):
         super(UndoStackTabbedEditor, self).__init__(filePath)
         
         self.undoStack = QUndoStack()
+        
+        # by default we limit the undo stack to 100 undo commands, should be enough and should
+        # avoid memory drainage. keep in mind that every tabbed editor has it's own undo stack,
+        # so the overall command limit is number_of_tabs * 100!
+        self.undoStack.setUndoLimit(100)
+        
         self.undoStack.canUndoChanged.connect(self.slot_undoAvailable)
         self.undoStack.canRedoChanged.connect(self.slot_redoAvailable)
         
@@ -180,6 +194,9 @@ class UndoStackTabbedEditor(TabbedEditor):
         
     def redo(self):
         self.undoStack.redo()
+
+    def getUndoStack(self):
+        return self.undoStack
 
     def slot_undoAvailable(self, available):
         # hasattr because this might be called even before initialise is called!

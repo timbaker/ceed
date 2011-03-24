@@ -33,6 +33,9 @@ class ModeSwitchCommand(commands.UndoCommand):
         self.oldTabIndex = oldTabIndex
         self.newTabIndex = newTabIndex
         
+        # we never every merge edit mode changes, no need to define this as refreshText
+        self.setText("Change edit mode to '%s'" % self.parent.tabText(newTabIndex))
+        
     def undo(self):
         super(ModeSwitchCommand, self).undo()
         

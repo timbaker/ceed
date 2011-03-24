@@ -47,6 +47,14 @@ class MoveCommand(commands.UndoCommand):
             delta = math.sqrt(positionDelta.x() * positionDelta.x() + positionDelta.y() * positionDelta.y())
             if delta > self.biggestDelta:
                 self.biggestDelta = delta
+    
+        self.refreshText()
+    
+    def refreshText(self):            
+        if len(self.imageNames) == 1:
+            self.setText("Move '%s'" % (self.imageNames[0]))
+        else:
+            self.setText("Move %i images" % (len(self.imageNames)))
                 
     def id(self):
         return idbase + 1
@@ -61,6 +69,8 @@ class MoveCommand(commands.UndoCommand):
                 # if the combined delta is reasonably small, we can merge the commands
                 self.newPositions = cmd.newPositions
                 self.biggestDelta = combinedBiggestDelta
+                
+                self.refreshText()
                 
                 return True
             
@@ -113,7 +123,15 @@ class GeometryChangeCommand(commands.UndoCommand):
             delta = math.sqrt(resizeDelta.x() * resizeDelta.x() + resizeDelta.y() * resizeDelta.y())
             if delta > self.biggestResizeDelta:
                 self.biggestResizeDelta = delta
-        
+    
+        self.refreshText()
+    
+    def refreshText(self):            
+        if len(self.imageNames) == 1:
+            self.setText("Geometry change of '%s'" % (self.imageNames[0]))
+        else:
+            self.setText("Geometry change of %i images" % (len(self.imageNames)))
+            
     def id(self):
         return idbase + 2
     
@@ -132,6 +150,8 @@ class GeometryChangeCommand(commands.UndoCommand):
                 
                 self.biggestMoveDelta = combinedBiggestMoveDelta
                 self.biggestResizeDelta = combinedBiggestResizeDelta
+                
+                self.refreshText()
                 
                 return True
             
@@ -171,6 +191,14 @@ class OffsetMoveCommand(commands.UndoCommand):
             delta = math.sqrt(positionDelta.x() * positionDelta.x() + positionDelta.y() * positionDelta.y())
             if delta > self.biggestDelta:
                 self.biggestDelta = delta
+                
+        self.refreshText()
+                
+    def refreshText(self):
+        if len(self.imageNames) == 1:
+            self.setText("Offset move of '%s'" % (self.imageNames[0]))
+        else:
+            self.setText("Offset move of %i images" % (len(self.imageNames)))
         
     def id(self):
         return idbase + 3
@@ -185,6 +213,8 @@ class OffsetMoveCommand(commands.UndoCommand):
                 # if the combined delta is reasonably small, we can merge the commands
                 self.newPositions = cmd.newPositions
                 self.biggestDelta = combinedBiggestDelta
+                
+                self.refreshText()
                 
                 return True
             
@@ -221,6 +251,14 @@ class XMLEditingCommand(commands.UndoCommand):
         
         self.dryRun = True
         
+        self.refreshText()
+        
+    def refreshText(self):
+        if self.totalChange == 1:
+            self.setText("XML edit, changed 1 character")
+        else:
+            self.setText("XML edit, changed %i characters" % (self.totalChange))
+        
     def id(self):
         return idbase + 4
         
@@ -232,6 +270,8 @@ class XMLEditingCommand(commands.UndoCommand):
             self.totalChange += cmd.totalChange
             self.newText = cmd.newText
             self.newCursor = cmd.newCursor
+            
+            self.refreshText()
             
             return True
         
