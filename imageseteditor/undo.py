@@ -83,14 +83,14 @@ class MoveCommand(commands.UndoCommand):
             image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.setPos(self.oldPositions[imageName])
             
-            image.updateListItem()
+            image.updateDockWidget()
             
     def redo(self):
         for imageName in self.imageNames:
             image = self.visual.imagesetEntry.getImageEntry(imageName)
             image.setPos(self.newPositions[imageName])
             
-            image.updateListItem()
+            image.updateDockWidget()
             
         super(MoveCommand, self).redo()
 
@@ -169,7 +169,7 @@ class GeometryChangeCommand(commands.UndoCommand):
             image.setPos(self.oldPositions[imageName])
             image.setRect(self.oldRects[imageName])
             
-            image.updateListItem()
+            image.updateDockWidget()
             
     def redo(self):
         for imageName in self.imageNames:
@@ -177,7 +177,7 @@ class GeometryChangeCommand(commands.UndoCommand):
             image.setPos(self.newPositions[imageName])
             image.setRect(self.newRects[imageName])
             
-            image.updateListItem()
+            image.updateDockWidget()
             
         super(GeometryChangeCommand, self).redo()
 

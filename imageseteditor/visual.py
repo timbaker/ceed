@@ -20,6 +20,7 @@ from PySide.QtGui import *
 from PySide.QtCore import *
 
 from xml.etree import ElementTree
+import fnmatch
 
 import undo
 
@@ -173,7 +174,7 @@ class ImageEntry(QGraphicsRectItem):
         self.listItem.setText(self.name)
         
         previewWidth = 24
-        previewHeight = 16
+        previewHeight = 24
         
         preview = QPixmap(previewWidth, previewHeight)
         preview.fill(Qt.transparent)
@@ -185,6 +186,30 @@ class ImageEntry(QGraphicsRectItem):
         painter.end()
         
         self.listItem.setIcon(QIcon(preview))
+
+    def updateListItemSelection(self):
+        if not self.listItem:
+            return
+        
+        dockWidget = self.listItem.dockWidget
+        
+        # the dock widget itself is performing a selection, we shall not interfere
+        if dockWidget.selectionUnderway:
+            return
+        
+        dockWidget.selectionSynchronisationUnderway = True
+        
+        if self.isSelected() or self.offset.isSelected():
+            self.listItem.setSelected(True)
+        else:
+            self.listItem.setSelected(False)
+            
+        dockWidget.selectionSynchronisationUnderway = False
+
+    def updateDockWidget(self):
+        self.updateListItem()
+        
+        # TODO: update the property editor in the dock widget
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSelectedHasChanged:
@@ -203,6 +228,8 @@ class ImageEntry(QGraphicsRectItem):
                     self.offset.setVisible(False)
                     
                 self.setZValue(self.zValue() - 1)
+                
+            self.updateListItemSelection()
 
         elif change == QGraphicsItem.ItemPositionChange:
             if self.potentialMove and not self.oldPosition:
@@ -332,8 +359,14 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.ui = ui.imageseteditor.dockwidget.Ui_DockWidget()
         self.ui.setupUi(self)
         
+        self.filterBox = self.findChild(QLineEdit, "filterBox")
+        self.filterBox.textChanged.connect(self.filterChanged)
+        
         self.list = self.findChild(QListWidget, "list")
         self.list.itemSelectionChanged.connect(self.slot_itemSelectionChanged)
+        
+        self.selectionUnderway = False
+        self.selectionSynchronisationUnderway = False
         
     def setImagesetEntry(self, imagesetEntry):
         self.imagesetEntry = imagesetEntry
@@ -343,17 +376,27 @@ class ImagesetEditorDockWidget(QDockWidget):
         
         for imageEntry in self.imagesetEntry.imageEntries:
             item = QListWidgetItem()
-            
+            item.dockWidget = self
             item.setFlags(Qt.ItemIsSelectable |
                           Qt.ItemIsEditable |
                           Qt.ItemIsEnabled)
             
             imageEntry.listItem = item
+            # nothing is selected (list was cleared) so we don't need to call
+            #  the whole updateDockWidget here
             imageEntry.updateListItem()
             
             self.list.addItem(item)
+        
+        # explicitly call the filtering again to make sure it's in sync    
+        self.filterChanged(self.filterBox.text())
 
     def slot_itemSelectionChanged(self):
+        # we are getting syncrhonised with the visual editing pane, do not interfere
+        if self.selectionSynchronisationUnderway:
+            return
+        
+        self.selectionUnderway = True
         self.parent.scene.clearSelection()
         
         imageEntryNames = self.list.selectedItems()
@@ -364,6 +407,20 @@ class ImagesetEditorDockWidget(QDockWidget):
         if len(imageEntryNames) == 1:
             imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryNames[0].text())
             self.parent.centerOn(imageEntry)
+            
+        self.selectionUnderway = False
+    
+    def filterChanged(self, filter):
+        # we append star at the end by default (makes image filtering much more practical)
+        filter = filter + "*"
+        
+        i = 0
+        while i < self.list.count():
+            listItem = self.list.item(i)
+            match = fnmatch.fnmatch(listItem.text(), filter)
+            listItem.setHidden(not match)
+            
+            i += 1
 
 class VisualEditing(QGraphicsView):
     def __init__(self, parent):
