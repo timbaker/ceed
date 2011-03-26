@@ -75,18 +75,15 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
     def saveAs(self, targetPath):
         xmlmode = self.currentWidget() == self.xml
         
-        # if user saved in xml mode, we process the xml via switching to visual and back
+        # if user saved in xml mode, we process the xml by propagating it to visual
         # (allowing the change propagation to do the xml validating and other work for us)
         
         if xmlmode:
-            self.setCurrentWidget(self.visual)
+            self.xml.propagateChangesToVisual()
             
         rootElement = self.visual.imagesetEntry.saveToElement()
         tree = ElementTree.ElementTree(rootElement)
         tree.write(targetPath, "utf-8")
-            
-        if xmlmode:
-            self.setCurrentWidget(self.xml)
         
         super(ImagesetTabbedEditor, self).saveAs(targetPath)
 
