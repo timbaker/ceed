@@ -32,6 +32,7 @@ from xml.etree import ElementTree
 class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
     """Binds all imageset editing functionality together
     """
+    
     def __init__(self, filePath):
         super(ImagesetTabbedEditor, self).__init__(filePath)
         
@@ -71,8 +72,23 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
         
         super(ImagesetTabbedEditor, self).deactivate()
         
-    def hasChanges(self):
-        return False
+    def saveAs(self, targetPath):
+        xmlmode = self.currentWidget() == self.xml
+        
+        # if user saved in xml mode, we process the xml via switching to visual and back
+        # (allowing the change propagation to do the xml validating and other work for us)
+        
+        if xmlmode:
+            self.setCurrentWidget(self.visual)
+            
+        rootElement = self.visual.imagesetEntry.saveToElement()
+        tree = ElementTree.ElementTree(rootElement)
+        tree.write(targetPath, "utf-8")
+            
+        if xmlmode:
+            self.setCurrentWidget(self.xml)
+        
+        super(ImagesetTabbedEditor, self).saveAs(targetPath)
 
 class ImagesetTabbedEditorFactory(tab.TabbedEditorFactory):
     def canEditFile(self, filePath):

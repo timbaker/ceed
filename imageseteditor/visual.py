@@ -21,12 +21,17 @@ from PySide.QtCore import *
 
 from xml.etree import ElementTree
 import fnmatch
+import os
 
 import undo
 
 import ui.imageseteditor.dockwidget
 
 class ImageLabel(QGraphicsTextItem):
+    """Text item showing image's label when the image is hovered or selected.
+    You should not use this directly! Use ImageEntry.name instead to get the name.    
+    """
+    
     def __init__(self, parent):
         super(ImageLabel, self).__init__()
         
@@ -38,19 +43,38 @@ class ImageLabel(QGraphicsTextItem):
         
         self.setPlainText("Unknown")
         
+        # we make the label a lot more transparent when mouse is over it to make it easier
+        # to work around the top edge of the image
+        self.setAcceptHoverEvents(True)
+        # the default opacity (when mouse is not over the label)
+        self.setOpacity(0.8)
+        
     def paint(self, painter, option, widget):
         painter.fillRect(self.boundingRect(), QColor(Qt.white))
         painter.drawRect(self.boundingRect())
         
         super(ImageLabel, self).paint(painter, option, widget)
+    
+    def hoverEnterEvent(self, event):
+        super(ImageLabel, self).hoverEnterEvent(event)
+        
+        self.setOpacity(0.2)
+        
+    def hoverLeaveEvent(self, event):
+        self.setOpacity(0.8)
+
+        super(ImageLabel, self).hoverLeaveEvent(event)
 
 class ImageOffset(QGraphicsPixmapItem):
+    """A crosshair showing where the imaginary (0, 0) point of the image is. The actual offset
+    is just a negated vector of the crosshair's position but this is easier to work with from
+    the artist's point of view.    
+    """
+    
     def __init__(self, parent):
         super(ImageOffset, self).__init__()
         
         self.parent = parent
-        
-        self.setAcceptsHoverEvents(True)
         
         self.setParentItem(parent)
         self.setFlags(QGraphicsItem.ItemIsMovable |
@@ -59,15 +83,23 @@ class ImageOffset(QGraphicsPixmapItem):
                       QGraphicsItem.ItemSendsGeometryChanges)
         
         self.setPixmap(QPixmap("icons/imageset_editing/offset_crosshair.png"))
+        # the crosshair pixmap is 15x15, (7, 7) is the centre pixel of it,
+        # we want that to be the (0, 0) point of the crosshair
         self.setOffset(-7, -7)
+        # always show this above the label (which has ZValue = 0)
         self.setZValue(1)
         
+        self.setAcceptHoverEvents(True)
+        # internal attribute to help decide when to hide/show the offset crosshair
         self.isHovered = False
         
         # used for undo
         self.potentialMove = False
         self.oldPosition = None
         
+        # by default Qt considers parts of the image with alpha = 0 not part of the image,
+        # that would make it very hard to move the crosshair, we consider the whole
+        # bounding rectangle to be part of the image
         self.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
         self.setVisible(False)
         
@@ -104,16 +136,39 @@ class ImageOffset(QGraphicsPixmapItem):
         super(ImageOffset, self).hoverLeaveEvent(event)
 
 class ImageEntry(QGraphicsRectItem):
+    """Represents the image of the imageset, can be drag moved, selected, resized, ...
+    """
+    
+    # the image's "real parameters" are properties that directly access Qt's
+    # facilities, this is done to make the code cleaner and save a little memory
+    
+    name = property(lambda self: self.label.toPlainText(),
+                    lambda self, value: self.label.setPlainText(value))
+    
+    xpos = property(lambda self: int(self.pos().x()),
+                    lambda self, value: self.setPos(value, self.pos().y()))
+    ypos = property(lambda self: int(self.pos().y()),
+                    lambda self, value: self.setPos(self.pos().x(), value))
+    width = property(lambda self: int(self.rect().width()),
+                     lambda self, value: self.setRect(0, 0, value, self.height))
+    height = property(lambda self: int(self.rect().height()),
+                      lambda self, value: self.setRect(0, 0, self.width, value))
+    
+    xoffset = property(lambda self: int(-(self.offset.pos().x() - 0.5)),
+                       lambda self, value: self.offset.setX(-float(value) + 0.5))
+    yoffset = property(lambda self: int(-(self.offset.pos().y() - 0.5)),
+                       lambda self, value: self.offset.setY(-float(value) + 0.5))
+    
     def __init__(self, parent):
         super(ImageEntry, self).__init__()
         
         self.parent = parent
         
-        self.setAcceptsHoverEvents(True)
         pen = QPen()
         pen.setColor(QColor(Qt.lightGray))
         self.setPen(pen)
         
+        self.setAcceptsHoverEvents(True)
         self.isHovered = False
         
         # used for undo
@@ -128,39 +183,39 @@ class ImageEntry(QGraphicsRectItem):
         
         self.label = ImageLabel(self)
         self.offset = ImageOffset(self)
-        
+
+        # list item in the dock widget's ListWidget
+        # this allows fast updates of the list item without looking it up
+        # It is save to assume that this is None or a valid QListWidgetItem        
         self.listItem = None
         
-    def getName(self):
-        return self.label.toPlainText()
-
     def loadFromElement(self, element):
-        self.setPos(float(element.get("XPos", 0)), float(element.get("YPos", 0)))
-        self.setRect(0, 0,
-                     float(element.get("Width", 1)), float(element.get("Height", 1))
-        )
+        self.name = element.get("Name", "Unknown")
         
-        self.label.setPlainText(element.get("Name", "Unknown"))
+        self.xpos = int(element.get("XPos", 0))
+        self.ypos = int(element.get("YPos", 0))
+        self.width = int(element.get("Width", 1))
+        self.height = int(element.get("Height", 1))
+        
+        self.xoffset = int(element.get("XOffset", 0))
+        self.yoffset = int(element.get("YOffset", 0))
+                
         self.label.setVisible(False)
-        
-        self.offset.setPos(-float(element.get("XOffset", 0)) + 0.5, -float(element.get("YOffset", 0)) + 0.5)
         
     def saveToElement(self):
         ret = ElementTree.Element("Image")
         
-        ret.set("Name", self.getName())
+        ret.set("Name", self.name)
         
-        ret.set("XPos", str(int(self.pos().x())))
-        ret.set("YPos", str(int(self.pos().y())))
-        ret.set("Width", str(int(self.rect().width())))
-        ret.set("Height", str(int(self.rect().height())))
+        ret.set("XPos", str(self.xpos))
+        ret.set("YPos", str(self.ypos))
+        ret.set("Width", str(self.width))
+        ret.set("Height", str(self.height))
         
-        xoffset = int(-(self.offset.pos().x() - 0.5))
-        yoffset = int(-(self.offset.pos().y() - 0.5))
         # we write none or both
-        if xoffset != 0 or yoffset != 0:
-            ret.set("XOffset", str(xoffset))
-            ret.set("YOffset", str(yoffset))
+        if self.xoffset != 0 or self.yoffset != 0:
+            ret.set("XOffset", str(self.xoffset))
+            ret.set("YOffset", str(self.yoffset))
 
         return ret
 
@@ -172,7 +227,7 @@ class ImageEntry(QGraphicsRectItem):
         if not self.listItem:
             return
         
-        self.listItem.setText(self.getName())
+        self.listItem.setText(self.name)
         
         previewWidth = 24
         previewHeight = 24
@@ -264,11 +319,10 @@ class ImageEntry(QGraphicsRectItem):
         self.setPen(pen)
         
         self.label.setVisible(True)
-        self.label.setOpacity(0.3)
         
         # TODO: very unreadable
         self.parent.parent.parent.mainWindow.statusBar().showMessage("Image: '%s'\t\tXPos: %i, YPos: %i, Width: %i, Height: %i" %
-                                                                     (self.getName(), self.pos().x(), self.pos().y(), self.rect().width(), self.rect().height()))
+                                                                     (self.name, self.pos().x(), self.pos().y(), self.rect().width(), self.rect().height()))
         
         self.isHovered = True
     
@@ -280,7 +334,6 @@ class ImageEntry(QGraphicsRectItem):
         
         if not self.isSelected():
             self.label.setVisible(False)
-        self.label.setOpacity(0.8)
         
         pen = QPen()
         pen.setColor(QColor(Qt.lightGray))
@@ -294,7 +347,11 @@ class ImagesetEntry(QGraphicsPixmapItem):
     def __init__(self, parent):
         super(ImagesetEntry, self).__init__()
         
+        self.name = "Unknown"
         self.imageFile = ""
+        self.nativeHorzRes = 800
+        self.nativeVertRes = 600
+        self.autoScaled = False
         
         self.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
         
@@ -322,16 +379,23 @@ class ImagesetEntry(QGraphicsPixmapItem):
         
     def getImageEntry(self, name):
         for image in self.imageEntries:
-            if image.getName() == name:
+            if image.name == name:
                 return image
             
         assert(False)
         return None
             
     def loadFromElement(self, element):
+        self.name = element.get("Name", "Unknown")
+        
         self.imageFile = element.get("Imagefile", "")
-        self.setPixmap(QPixmap("datafiles/imagesets/%s" % (self.imageFile)))
+        absoluteImageFilePath = os.path.join(os.path.dirname(self.parent.parent.filePath), self.imageFile)
+        self.setPixmap(QPixmap(absoluteImageFilePath))
         self.transparencyBackground.setRect(self.boundingRect())
+        
+        self.nativeHorzRes = int(element.get("NativeHorzRes", 800))
+        self.nativeVertRes = int(element.get("NativeVertRes", 600))
+        self.autoScaled = element.get("AutoScaled", "false") == "true"
         
         for imageElement in element.findall("Image"):
             image = ImageEntry(self)
@@ -341,7 +405,12 @@ class ImagesetEntry(QGraphicsPixmapItem):
     def saveToElement(self):
         ret = ElementTree.Element("Imageset")
         
+        ret.set("Name", self.name)
         ret.set("Imagefile", self.imageFile)
+        
+        ret.set("NativeHorzRes", str(self.nativeHorzRes))
+        ret.set("NativeVertRes", str(self.nativeVertRes))
+        ret.set("AutoScaled", "true" if self.autoScaled else "false")
         
         for image in self.imageEntries:
             ret.append(image.saveToElement())
@@ -416,7 +485,7 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.selectionUnderway = False
         
     def slot_itemChanged(self, item):
-        oldName = item.imageEntry.getName()
+        oldName = item.imageEntry.name
         newName = item.text()
         
         if oldName == newName:
@@ -442,6 +511,7 @@ class VisualEditing(QGraphicsView):
     def __init__(self, parent):
         self.scene = QGraphicsScene()
         super(VisualEditing, self).__init__(self.scene)
+        self.scene.selectionChanged.connect(self.slot_selectionChanged)
         
         self.parent = parent
 
@@ -533,9 +603,9 @@ class VisualEditing(QGraphicsView):
             newPositions = {}
             
             for imageEntry in imageEntries:
-                imageNames.append(imageEntry.getName())
-                oldPositions[imageEntry.getName()] = imageEntry.pos()
-                newPositions[imageEntry.getName()] = imageEntry.pos() + delta
+                imageNames.append(imageEntry.name)
+                oldPositions[imageEntry.name] = imageEntry.pos()
+                newPositions[imageEntry.name] = imageEntry.pos() + delta
                 
             cmd = undo.MoveCommand(self, imageNames, oldPositions, newPositions)
             self.parent.undoStack.push(cmd)
@@ -555,13 +625,13 @@ class VisualEditing(QGraphicsView):
             newRects = {}
             
             for imageEntry in imageEntries:
-                imageNames.append(imageEntry.getName())
-                oldPositions[imageEntry.getName()] = imageEntry.pos()
-                newPositions[imageEntry.getName()] = imageEntry.pos() - topLeftDelta
-                oldRects[imageEntry.getName()] = imageEntry.rect()
+                imageNames.append(imageEntry.name)
+                oldPositions[imageEntry.name] = imageEntry.pos()
+                newPositions[imageEntry.name] = imageEntry.pos() - topLeftDelta
+                oldRects[imageEntry.name] = imageEntry.rect()
                 newRect = imageEntry.rect()
                 newRect.setBottomRight(newRect.bottomRight() - topLeftDelta + bottomRightDelta)
-                newRects[imageEntry.getName()] = newRect
+                newRects[imageEntry.name] = newRect
                 
             cmd = undo.GeometryChangeCommand(self, imageNames, oldPositions, oldRects, newPositions, newRects)
             self.parent.undoStack.push(cmd)
@@ -649,18 +719,18 @@ class VisualEditing(QGraphicsView):
             for selectedItem in self.scene.selectedItems():
                 if isinstance(selectedItem, ImageEntry):
                     if selectedItem.oldPosition:
-                        imageNames.append(selectedItem.getName())
-                        imageOldPositions[selectedItem.getName()] = selectedItem.oldPosition
-                        imageNewPositions[selectedItem.getName()] = selectedItem.pos()
+                        imageNames.append(selectedItem.name)
+                        imageOldPositions[selectedItem.name] = selectedItem.oldPosition
+                        imageNewPositions[selectedItem.name] = selectedItem.pos()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
                     
                 elif isinstance(selectedItem, ImageOffset):
                     if selectedItem.oldPosition:
-                        offsetNames.append(selectedItem.parent.getName())
-                        offsetOldPositions[selectedItem.parent.getName()] = selectedItem.oldPosition
-                        offsetNewPositions[selectedItem.parent.getName()] = selectedItem.pos()
+                        offsetNames.append(selectedItem.parent.name)
+                        offsetOldPositions[selectedItem.parent.name] = selectedItem.oldPosition
+                        offsetNewPositions[selectedItem.parent.name] = selectedItem.pos()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
@@ -731,7 +801,15 @@ class VisualEditing(QGraphicsView):
         else:
             event.accept()
             
-            
+    def slot_selectionChanged(self):
+        # if dockWidget is changing the selection, back off
+        if self.dockWidget.selectionUnderway:
+            return
+        
+        selectedItems = self.scene.selectedItems()
+        if len(selectedItems) == 1:
+            self.dockWidget.list.scrollToItem(selectedItems[0].listItem)
+        
     def slot_toggleEditOffsets(self, enabled):
         self.scene.clearSelection()
         

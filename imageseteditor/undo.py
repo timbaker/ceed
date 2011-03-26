@@ -24,6 +24,10 @@ from PySide import QtCore
 
 idbase = 1100
 
+# undo commands in this file intentionally use Qt's primitives because
+# it's easier to work with and avoids unnecessary conversions all the time
+# you should however always use the ImageEntry's properties (xpos, ypos, ...)!
+
 class MoveCommand(commands.UndoCommand):
     """This command simply moves given images from old position to the new
     You can use GeometryChangeCommand instead and use the same rects as old new as current rects,
@@ -264,12 +268,12 @@ class RenameCommand(commands.UndoCommand):
         super(RenameCommand, self).undo()
         
         imageEntry = self.visual.imagesetEntry.getImageEntry(self.newName)
-        imageEntry.label.setPlainText(self.oldName)
+        imageEntry.name = self.oldName
         imageEntry.updateListItem()
     
     def redo(self):        
         imageEntry = self.visual.imagesetEntry.getImageEntry(self.oldName)
-        imageEntry.label.setPlainText(self.newName)
+        imageEntry.name = self.newName
         imageEntry.updateListItem()
    
         super(RenameCommand, self).redo()

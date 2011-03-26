@@ -61,8 +61,16 @@ class XMLEditing(xmledit.XMLEditWidget):
         self.ignoreUndoCommands = False
         
     def propagateChangesToVisual(self):
-        element = ElementTree.fromstring(self.document().toPlainText())
+        source = self.document().toPlainText()
         
+        # for some reason, Qt calls hideEvent even though the tab widget was never shown :-/
+        # in this case the source will be empty and parsing it will fail
+        if source == "":
+            return
+        
+        # TODO: What if this fails to parse? Do we show a message box that it failed and allow falling back
+        #       to the previous visual state or do we somehow correct the XML like editors do?
+        element = ElementTree.fromstring(self.document().toPlainText())
         self.parent.visual.loadImagesetEntryFromElement(element)
     
     def showEvent(self, event):

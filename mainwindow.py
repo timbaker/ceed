@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         
         propertyinspector.PropertyInspectorManager.loadMappings("data/StockMappings.xml")
         
-        self.restoreSettings()
+        #self.restoreSettings()
     
     def connectActions(self):
         self.newProjectAction = self.findChild(QAction, "actionNewProject")
@@ -114,6 +114,7 @@ class MainWindow(QMainWindow):
         self.projectSettingsAction.setEnabled(False)
         
         self.saveAction = self.findChild(QAction, "actionSave")
+        self.saveAction.triggered.connect(self.slot_save)
         self.saveAction.setEnabled(False)
         self.saveAllAction = self.findChild(QAction, "actionSaveAll")
         self.saveAllAction.setEnabled(False)
@@ -241,7 +242,7 @@ class MainWindow(QMainWindow):
             self.restoreState(self.settings.value("state"))
         
     def quit(self):
-        self.saveSettings()
+        #self.saveSettings()
         self.app.exit(0)
         
     def slot_newProject(self):
@@ -333,10 +334,17 @@ class MainWindow(QMainWindow):
         if self.activeEditor:
             self.activeEditor.deactivate()
 
+        # enable saving by default
+        self.saveAction.setEnabled(True)
+
         # it's the tabbed editor's responsibility to handle these,
         # we disable them by default
         self.undoAction.setEnabled(False)
         self.redoAction.setEnabled(False)
+        # also reset their texts in case the tabbed editor messed with them
+        self.undoAction.setText("Undo")
+        self.redoAction.setText("Redo")
+        
         # we also clear the status bar
         self.statusBar().clearMessage()
 
@@ -372,7 +380,7 @@ class MainWindow(QMainWindow):
             
             if result == QMessageBox.Save:
                 # lets save changes and then kill the editor (This is the default action)
-                editor.saveChanges()
+                editor.save()
                 self.closeEditorTab(editor)
                 
             elif result == QMessageBox.Discard:
@@ -382,6 +390,10 @@ class MainWindow(QMainWindow):
                 self.closeEditorTab(editor)
             
             # don't do anything if user selected 'Cancel'
+
+    def slot_save(self):
+        if self.activeEditor:
+            self.activeEditor.save()
         
     def slot_undo(self):
         if self.activeEditor:
