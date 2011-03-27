@@ -224,6 +224,11 @@ class UndoStackTabbedEditor(TabbedEditor):
         
         self.mainWindow.undoAction.setEnabled(self.undoStack.canUndo())
         self.mainWindow.redoAction.setEnabled(self.undoStack.canRedo())
+        
+        self.mainWindow.undoAction.setText("Undo %s" % (self.undoStack.undoText()))
+        self.mainWindow.redoAction.setText("Redo %s" % (self.undoStack.redoText()))
+        
+        self.mainWindow.saveAction.setEnabled(not self.undoStack.isClean())
     
     def hasChanges(self):
         return not self.undoStack.isClean()

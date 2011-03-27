@@ -278,6 +278,174 @@ class RenameCommand(commands.UndoCommand):
    
         super(RenameCommand, self).redo()
 
+class ImagesetRenameCommand(commands.UndoCommand):
+    """Changes name of the imageset
+    """
+    
+    def __init__(self, visual, oldName, newName):
+        super(ImagesetRenameCommand, self).__init__()
+        
+        self.visual = visual
+        
+        self.oldName = oldName
+        self.newName = newName
+
+        self.refreshText()
+        
+    def refreshText(self):
+        self.setText("Rename imageset from '%s' to '%s'" % (self.oldName, self.newName))
+                
+    def id(self):
+        return idbase + 5
+    
+    def mergeWith(self, cmd):
+        self.newName = cmd.newName
+        self.refreshText()
+        
+        return True
+    
+    def undo(self):
+        super(ImagesetRenameCommand, self).undo()
+        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.name = self.oldName
+        self.visual.dockWidget.name.setText(self.oldName)
+    
+    def redo(self):        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.name = self.newName
+        self.visual.dockWidget.name.setText(self.newName)
+   
+        super(ImagesetRenameCommand, self).redo()
+
+class ImagesetChangeImageCommand(commands.UndoCommand):
+    """Changes the underlying image of the imageset
+    """
+    
+    def __init__(self, visual, oldImageFile, newImageFile):
+        super(ImagesetChangeImageCommand, self).__init__()
+        
+        self.visual = visual
+        
+        self.oldImageFile = oldImageFile
+        self.newImageFile = newImageFile
+
+        self.refreshText()
+        
+    def refreshText(self):
+        self.setText("Change underlying image from '%s' to '%s'" % (self.oldImageFile, self.newImageFile))
+                
+    def id(self):
+        return idbase + 6
+    
+    def mergeWith(self, cmd):
+        self.newImageFile = cmd.newImageFile
+        self.refreshText()
+        
+        return True
+    
+    def undo(self):
+        super(ImagesetChangeImageCommand, self).undo()
+        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.loadImage(self.oldImageFile)
+        self.visual.dockWidget.image.setText(imagesetEntry.getAbsoluteImageFile())
+    
+    def redo(self):        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.loadImage(self.newImageFile)
+        self.visual.dockWidget.image.setText(imagesetEntry.getAbsoluteImageFile())
+   
+        super(ImagesetChangeImageCommand, self).redo()
+        
+class ImagesetChangeNativeResolutionCommand(commands.UndoCommand):
+    """Changes native resolution of the imageset
+    """
+    
+    def __init__(self, visual, oldHorzRes, oldVertRes, newHorzRes, newVertRes):
+        super(ImagesetChangeNativeResolutionCommand, self).__init__()
+        
+        self.visual = visual
+        
+        self.oldHorzRes = oldHorzRes
+        self.oldVertRes = oldVertRes
+        self.newHorzRes = newHorzRes
+        self.newVertRes = newVertRes
+
+        self.refreshText()
+
+    def refreshText(self):
+        self.setText("Change imageset's native resolution to %ix%i" % (self.newHorzRes, self.newVertRes))
+                
+    def id(self):
+        return idbase + 7
+    
+    def mergeWith(self, cmd):
+        self.newHorzRes = cmd.newHorzRes
+        self.newVertRes = cmd.newVertRes
+        
+        self.refreshText()
+        
+        return True
+    
+    def undo(self):
+        super(ImagesetChangeNativeResolutionCommand, self).undo()
+        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.nativeHorzRes = self.oldHorzRes
+        imagesetEntry.nativeVertRes = self.oldVertRes
+        self.visual.dockWidget.nativeHorzRes.setText(str(self.oldHorzRes))
+        self.visual.dockWidget.nativeVertRes.setText(str(self.oldVertRes))
+    
+    def redo(self):        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.nativeHorzRes = self.newHorzRes
+        imagesetEntry.nativeVertRes = self.newVertRes
+        self.visual.dockWidget.nativeHorzRes.setText(str(self.newHorzRes))
+        self.visual.dockWidget.nativeVertRes.setText(str(self.newVertRes))
+   
+        super(ImagesetChangeNativeResolutionCommand, self).redo()    
+
+class ImagesetChangeAutoScaledCommand(commands.UndoCommand):
+    """Changes auto scaled value
+    """
+    
+    def __init__(self, visual, oldAutoScaled, newAutoScaled):
+        super(ImagesetChangeAutoScaledCommand, self).__init__()
+        
+        self.visual = visual
+        
+        self.oldAutoScaled = oldAutoScaled
+        self.newAutoScaled = newAutoScaled
+
+        self.refreshText()
+        
+    def refreshText(self):
+        self.setText("%s imageset auto scale" % ("Enabled" if self.newAutoScaled else "Disabled"))
+                
+    def id(self):
+        return idbase + 8
+    
+    def mergeWith(self, cmd):
+        self.newAutoScaled = cmd.newAutoScaled
+        self.refreshText()
+        
+        return True
+    
+    def undo(self):
+        super(ImagesetChangeAutoScaledCommand, self).undo()
+        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.autoScaled = self.oldAutoScaled
+        self.visual.dockWidget.autoScaled.setChecked(self.oldAutoScaled)
+    
+    def redo(self):        
+        imagesetEntry = self.visual.imagesetEntry
+        imagesetEntry.autoScaled = self.newAutoScaled
+        self.visual.dockWidget.autoScaled.setChecked(self.newAutoScaled)
+   
+        super(ImagesetChangeAutoScaledCommand, self).redo()
+
 class XMLEditingCommand(commands.UndoCommand):
     """Extremely memory hungry implementation for now, I have to figure out how to use my own
     QUndoStack with QTextDocument in the future to fix this.
@@ -304,7 +472,7 @@ class XMLEditingCommand(commands.UndoCommand):
             self.setText("XML edit, changed %i characters" % (self.totalChange))
         
     def id(self):
-        return idbase + 5
+        return idbase + 9
         
     def mergeWith(self, cmd):
         assert(self.xmlediting == cmd.xmlediting)

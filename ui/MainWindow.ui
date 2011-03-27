@@ -119,11 +119,6 @@
     </property>
     <addaction name="actionLicense"/>
    </widget>
-   <widget class="QMenu" name="menu">
-    <property name="title">
-     <string>|</string>
-    </property>
-   </widget>
    <widget class="QMenu" name="menuPanels">
     <property name="title">
      <string>Panels</string>
@@ -136,7 +131,6 @@
    <addaction name="menuEdit"/>
    <addaction name="menuPanels"/>
    <addaction name="menuAbout"/>
-   <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="globalToolbar">

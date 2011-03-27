@@ -35,25 +35,8 @@ class XMLEditing(xmledit.XMLEditWidget):
         self.document().contentsChange.connect(self.slot_contentsChange)
         
     def refreshFromVisual(self):
-        # taken from ElementLib
-        # TODO: This will have to be reused by layout editor and maybe others, refactor for reuse
-        def indent(elem, level = 0, tabImpostor = "    "):
-            i = "\n" + level * tabImpostor
-            if len(elem):
-                if not elem.text or not elem.text.strip():
-                    elem.text = i + tabImpostor
-                for e in elem:
-                    indent(e, level+1)
-                    if not e.tail or not e.tail.strip():
-                        e.tail = i + tabImpostor
-                if not e.tail or not e.tail.strip():
-                    e.tail = i
-            else:
-                if level and (not elem.tail or not elem.tail.strip()):
-                    elem.tail = i
-        
         element = self.parent.visual.imagesetEntry.saveToElement()
-        indent(element)
+        xmledit.indent(element)
         
         self.ignoreUndoCommands = True
         # We purposefully use selectAll and insertPlainText to play well with undo redo across editing modes

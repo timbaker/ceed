@@ -61,6 +61,7 @@ class FileLineEdit(QWidget):
                                self.filter)
         elif self.mode == FileLineEdit.ExistingDirectoryMode:
             path = QFileDialog.getExistingDirectory(self, "Choose a directory")
-            
-        self.lineEdit.setText(path)
+        
+        if path != "":    
+            self.lineEdit.setText(path)
         

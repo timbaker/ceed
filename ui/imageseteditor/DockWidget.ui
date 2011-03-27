@@ -7,8 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>347</width>
-    <height>712</height>
+    <height>754</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>347</width>
+    <height>463</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Imageset Editing</string>
@@ -34,39 +40,139 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="QLineEdit" name="filterBox">
-      <property name="placeholderText">
-       <string>Filter images by name</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QListWidget" name="list">
-      <property name="editTriggers">
-       <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
-      </property>
-      <property name="alternatingRowColors">
-       <bool>false</bool>
-      </property>
-      <property name="selectionMode">
-       <enum>QAbstractItemView::ExtendedSelection</enum>
-      </property>
-      <property name="iconSize">
+     <widget class="QGroupBox" name="imagesetGroupBox">
+      <property name="minimumSize">
        <size>
-        <width>32</width>
-        <height>32</height>
+        <width>0</width>
+        <height>117</height>
        </size>
       </property>
-      <property name="selectionRectVisible">
-       <bool>true</bool>
+      <property name="title">
+       <string>Imageset</string>
       </property>
-      <property name="sortingEnabled">
-       <bool>true</bool>
-      </property>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <property name="sizeConstraint">
+        <enum>QLayout::SetMinimumSize</enum>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="nameLabel">
+         <property name="text">
+          <string>Name</string>
+         </property>
+         <property name="buddy">
+          <cstring>name</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1" colspan="2">
+        <widget class="QLineEdit" name="name"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="imageLabel">
+         <property name="text">
+          <string>Image</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1" colspan="2">
+        <widget class="FileLineEdit" name="image" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="autoScaleLabel">
+         <property name="text">
+          <string>Auto scaled</string>
+         </property>
+         <property name="buddy">
+          <cstring>autoScaled</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="2">
+        <widget class="QCheckBox" name="autoScaled">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="nativeResolutionLabel">
+         <property name="text">
+          <string>Native resolution</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QLineEdit" name="nativeHorzRes"/>
+       </item>
+       <item row="4" column="2">
+        <widget class="QLineEdit" name="nativeVertRes"/>
+       </item>
+       <item row="2" column="2">
+        <widget class="QPushButton" name="imageLoad">
+         <property name="text">
+          <string>Load</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </item>
     <item>
-     <widget class="QGroupBox" name="groupBox">
+     <widget class="QGroupBox" name="imagesGroupBox">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>100</height>
+       </size>
+      </property>
+      <property name="title">
+       <string>Images</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLineEdit" name="filterBox">
+         <property name="placeholderText">
+          <string>Filter images by name</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="list">
+         <property name="editTriggers">
+          <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>false</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::ExtendedSelection</enum>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>32</width>
+           <height>32</height>
+          </size>
+         </property>
+         <property name="selectionRectVisible">
+          <bool>true</bool>
+         </property>
+         <property name="sortingEnabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="propertiesGroupBox">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
         <horstretch>0</horstretch>
@@ -74,11 +180,11 @@
        </sizepolicy>
       </property>
       <property name="title">
-       <string>Properties</string>
+       <string>Selected image properties</string>
       </property>
       <layout class="QGridLayout" name="gridLayout">
        <item row="1" column="2">
-        <widget class="QLineEdit" name="lineEdit_2">
+        <widget class="QLineEdit" name="positionY">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -88,30 +194,30 @@
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEdit"/>
+        <widget class="QLineEdit" name="positionX"/>
        </item>
        <item row="1" column="0">
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="positionLabel">
          <property name="text">
           <string>Position</string>
          </property>
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QLineEdit" name="lineEdit_3"/>
+        <widget class="QLineEdit" name="width"/>
        </item>
        <item row="2" column="2">
-        <widget class="QLineEdit" name="lineEdit_4"/>
+        <widget class="QLineEdit" name="height"/>
        </item>
        <item row="2" column="0">
-        <widget class="QLabel" name="label_2">
+        <widget class="QLabel" name="sizeLabel">
          <property name="text">
           <string>Size</string>
          </property>
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QLabel" name="label_4">
+        <widget class="QLabel" name="xColumnLabel">
          <property name="text">
           <string>X</string>
          </property>
@@ -121,7 +227,7 @@
         </widget>
        </item>
        <item row="0" column="2">
-        <widget class="QLabel" name="label_5">
+        <widget class="QLabel" name="yColumnLabel">
          <property name="text">
           <string>Y</string>
          </property>
@@ -131,13 +237,13 @@
         </widget>
        </item>
        <item row="3" column="1">
-        <widget class="QLineEdit" name="lineEdit_5"/>
+        <widget class="QLineEdit" name="offsetX"/>
        </item>
        <item row="3" column="2">
-        <widget class="QLineEdit" name="lineEdit_6"/>
+        <widget class="QLineEdit" name="offsetY"/>
        </item>
        <item row="3" column="0">
-        <widget class="QLabel" name="label_3">
+        <widget class="QLabel" name="offsetLabel">
          <property name="text">
           <string>Offset</string>
          </property>
@@ -149,6 +255,14 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FileLineEdit</class>
+   <extends>QWidget</extends>
+   <header>qtwidgets</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

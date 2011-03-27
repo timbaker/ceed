@@ -23,6 +23,7 @@ from xml.etree import ElementTree
 import fnmatch
 import os
 
+import qtwidgets
 import undo
 
 import ui.imageseteditor.dockwidget
@@ -293,13 +294,17 @@ class ImageEntry(QGraphicsRectItem):
             
             newPosition = value
 
-            rect = self.parent.boundingRect()
-            rect.setWidth(rect.width() - self.rect().width())
-            rect.setHeight(rect.height() - self.rect().height())
-            
-            if not rect.contains(newPosition):
-                newPosition.setX(min(rect.right(), max(newPosition.x(), rect.left())))
-                newPosition.setY(min(rect.bottom(), max(newPosition.y(), rect.top())))
+            if not self.parent.pixmap().isNull():
+                # if, for whatever reason, the loading of the pixmap failed,
+                # we don't constrain to the empty null pixmap
+                
+                rect = self.parent.boundingRect()
+                rect.setWidth(rect.width() - self.rect().width())
+                rect.setHeight(rect.height() - self.rect().height())
+                
+                if not rect.contains(newPosition):
+                    newPosition.setX(min(rect.right(), max(newPosition.x(), rect.left())))
+                    newPosition.setY(min(rect.bottom(), max(newPosition.y(), rect.top())))
             
             # now round the position to pixels
             newPosition.setX(round(newPosition.x()))
@@ -384,14 +389,28 @@ class ImagesetEntry(QGraphicsPixmapItem):
             
         assert(False)
         return None
-            
+    
+    def loadImage(self, relativeImagePath):
+        self.imageFile = relativeImagePath
+        self.setPixmap(QPixmap(self.getAbsoluteImageFile()))
+        self.transparencyBackground.setRect(self.boundingRect())
+        
+        # go over all image entries and set their position to force them to be constrained
+        # to the new pixmap's dimensions
+        for imageEntry in self.imageEntries:
+            imageEntry.setPos(imageEntry.pos())
+            imageEntry.updateDockWidget()
+    
+    def getAbsoluteImageFile(self):
+        return os.path.join(os.path.dirname(self.parent.parent.filePath), self.imageFile)
+    
+    def convertToRelativeImageFile(self, absoluteImageFile):
+        return os.path.normpath(os.path.relpath(absoluteImageFile, os.path.dirname(self.parent.parent.filePath)))
+    
     def loadFromElement(self, element):
         self.name = element.get("Name", "Unknown")
         
-        self.imageFile = element.get("Imagefile", "")
-        absoluteImageFilePath = os.path.join(os.path.dirname(self.parent.parent.filePath), self.imageFile)
-        self.setPixmap(QPixmap(absoluteImageFilePath))
-        self.transparencyBackground.setRect(self.boundingRect())
+        self.loadImage(element.get("Imagefile", ""))
         
         self.nativeHorzRes = int(element.get("NativeHorzRes", 800))
         self.nativeVertRes = int(element.get("NativeVertRes", 600))
@@ -429,6 +448,18 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.ui = ui.imageseteditor.dockwidget.Ui_DockWidget()
         self.ui.setupUi(self)
         
+        self.name = self.findChild(QLineEdit, "name")
+        self.name.textEdited.connect(self.slot_nameEdited)
+        self.image = self.findChild(qtwidgets.FileLineEdit, "image")
+        self.imageLoad = self.findChild(QPushButton, "imageLoad")
+        self.imageLoad.clicked.connect(self.slot_imageLoadClicked)
+        self.autoScaled = self.findChild(QCheckBox, "autoScaled")
+        self.autoScaled.stateChanged.connect(self.slot_autoScaledChanged)
+        self.nativeHorzRes = self.findChild(QLineEdit, "nativeHorzRes")
+        self.nativeHorzRes.textEdited.connect(self.slot_nativeResolutionEdited)
+        self.nativeVertRes = self.findChild(QLineEdit, "nativeVertRes")
+        self.nativeVertRes.textEdited.connect(self.slot_nativeResolutionEdited)
+        
         self.filterBox = self.findChild(QLineEdit, "filterBox")
         self.filterBox.textChanged.connect(self.filterChanged)
         
@@ -444,6 +475,12 @@ class ImagesetEditorDockWidget(QDockWidget):
         
     def refresh(self):
         self.list.clear()
+        
+        self.name.setText(self.imagesetEntry.name)
+        self.image.setText(self.imagesetEntry.getAbsoluteImageFile())
+        self.autoScaled.setChecked(self.imagesetEntry.autoScaled)
+        self.nativeHorzRes.setText(str(self.imagesetEntry.nativeHorzRes))
+        self.nativeVertRes.setText(str(self.imagesetEntry.nativeVertRes))
         
         for imageEntry in self.imagesetEntry.imageEntries:
             item = QListWidgetItem()
@@ -506,6 +543,48 @@ class ImagesetEditorDockWidget(QDockWidget):
             listItem.setHidden(not match)
             
             i += 1
+            
+    def slot_nameEdited(self, newValue):
+        oldName = self.imagesetEntry.name
+        newName = self.name.text()
+        
+        if oldName == newName:
+            return
+        
+        cmd = undo.ImagesetRenameCommand(self.parent, oldName, newName)
+        self.parent.parent.undoStack.push(cmd)
+        
+    def slot_imageLoadClicked(self):
+        oldImageFile = self.imagesetEntry.imageFile
+        newImageFile = self.imagesetEntry.convertToRelativeImageFile(self.image.text())
+        
+        if oldImageFile == newImageFile:
+            return
+        
+        cmd = undo.ImagesetChangeImageCommand(self.parent, oldImageFile, newImageFile)
+        self.parent.parent.undoStack.push(cmd)
+        
+    def slot_autoScaledChanged(self, newState):
+        oldAutoScaled = self.imagesetEntry.autoScaled
+        newAutoScaled = self.autoScaled.checkState() == Qt.Checked
+        
+        if oldAutoScaled == newAutoScaled:
+            return
+        
+        cmd = undo.ImagesetChangeAutoScaledCommand(self.parent, oldAutoScaled, newAutoScaled)
+        self.parent.parent.undoStack.push(cmd)
+        
+    def slot_nativeResolutionEdited(self, newValue):
+        oldHorzRes = self.imagesetEntry.nativeHorzRes
+        oldVertRes = self.imagesetEntry.nativeVertRes
+        newHorzRes = int(self.nativeHorzRes.text())
+        newVertRes = int(self.nativeVertRes.text())
+        
+        if oldHorzRes == newHorzRes and oldVertRes == newVertRes:
+            return
+        
+        cmd = undo.ImagesetChangeNativeResolutionCommand(self.parent, oldHorzRes, oldVertRes, newHorzRes, newVertRes)
+        self.parent.parent.undoStack.push(cmd)
 
 class VisualEditing(QGraphicsView):
     def __init__(self, parent):

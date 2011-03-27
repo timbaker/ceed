@@ -21,6 +21,7 @@ from PySide.QtGui import *
 
 import tab
 import mixedtab
+import xmledit
 
 import undo
 
@@ -82,6 +83,9 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
             self.xml.propagateChangesToVisual()
             
         rootElement = self.visual.imagesetEntry.saveToElement()
+        # we indent to make the resulting files as readable as possible
+        xmledit.indent(rootElement)
+        
         tree = ElementTree.ElementTree(rootElement)
         tree.write(targetPath, "utf-8")
         

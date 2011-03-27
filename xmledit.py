@@ -1,6 +1,22 @@
 from PySide import QtGui
 from PySide import QtCore
 
+# taken from ElementLib
+def indent(elem, level = 0, tabImpostor = "    "):
+    i = "\n" + level * tabImpostor
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + tabImpostor
+        for e in elem:
+            indent(e, level+1)
+            if not e.tail or not e.tail.strip():
+                e.tail = i + tabImpostor
+        if not e.tail or not e.tail.strip():
+            e.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
+
 class XMLSyntaxHighlighter(QtGui.QSyntaxHighlighter):
     def __init__(self, parent=None):
         super(XMLSyntaxHighlighter, self).__init__(parent)
