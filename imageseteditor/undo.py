@@ -278,6 +278,54 @@ class RenameCommand(commands.UndoCommand):
    
         super(RenameCommand, self).redo()
 
+class PropertyEditCommand(commands.UndoCommand):
+    """Changes one property of the image.
+    
+    We do this separately from Move, OffsetMove, etc commands because we want to
+    always merge in this case.
+    """
+    
+    def __init__(self, visual, imageName, propertyName, oldValue, newValue):
+        super(PropertyEditCommand, self).__init__()
+        
+        self.visual = visual
+        self.imageName = imageName
+        self.propertyName = propertyName
+        self.oldValue = oldValue
+        self.newValue = newValue
+        
+        self.refreshText()
+        
+    def refreshText(self):
+        self.setText("Change %s of '%s' to '%s'" % (self.propertyName, self.imageName, self.newValue))
+                
+    def id(self):
+        return idbase + 5
+    
+    def mergeWith(self, cmd):
+        if self.imageName == cmd.imageName and self.propertyName == cmd.propertyName:
+            self.newValue = cmd.newValue
+            
+            self.refreshText()
+            
+            return True
+        
+        return False
+    
+    def undo(self):
+        super(PropertyEditCommand, self).undo()
+        
+        imageEntry = self.visual.imagesetEntry.getImageEntry(self.imageName)
+        setattr(imageEntry, self.propertyName, self.oldValue)
+        imageEntry.updateDockWidget()
+    
+    def redo(self):        
+        imageEntry = self.visual.imagesetEntry.getImageEntry(self.imageName)
+        setattr(imageEntry, self.propertyName, self.newValue)
+        imageEntry.updateDockWidget()
+   
+        super(PropertyEditCommand, self).redo()
+
 class ImagesetRenameCommand(commands.UndoCommand):
     """Changes name of the imageset
     """
@@ -296,7 +344,7 @@ class ImagesetRenameCommand(commands.UndoCommand):
         self.setText("Rename imageset from '%s' to '%s'" % (self.oldName, self.newName))
                 
     def id(self):
-        return idbase + 5
+        return idbase + 6
     
     def mergeWith(self, cmd):
         self.newName = cmd.newName
@@ -336,7 +384,7 @@ class ImagesetChangeImageCommand(commands.UndoCommand):
         self.setText("Change underlying image from '%s' to '%s'" % (self.oldImageFile, self.newImageFile))
                 
     def id(self):
-        return idbase + 6
+        return idbase + 7
     
     def mergeWith(self, cmd):
         self.newImageFile = cmd.newImageFile
@@ -378,7 +426,7 @@ class ImagesetChangeNativeResolutionCommand(commands.UndoCommand):
         self.setText("Change imageset's native resolution to %ix%i" % (self.newHorzRes, self.newVertRes))
                 
     def id(self):
-        return idbase + 7
+        return idbase + 8
     
     def mergeWith(self, cmd):
         self.newHorzRes = cmd.newHorzRes
@@ -424,7 +472,7 @@ class ImagesetChangeAutoScaledCommand(commands.UndoCommand):
         self.setText("%s imageset auto scale" % ("Enabled" if self.newAutoScaled else "Disabled"))
                 
     def id(self):
-        return idbase + 8
+        return idbase + 9
     
     def mergeWith(self, cmd):
         self.newAutoScaled = cmd.newAutoScaled
@@ -472,7 +520,7 @@ class XMLEditingCommand(commands.UndoCommand):
             self.setText("XML edit, changed %i characters" % (self.totalChange))
         
     def id(self):
-        return idbase + 9
+        return idbase + 10
         
     def mergeWith(self, cmd):
         assert(self.xmlediting == cmd.xmlediting)

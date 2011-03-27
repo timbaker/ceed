@@ -266,6 +266,13 @@ class ImageEntry(QGraphicsRectItem):
     def updateDockWidget(self):
         self.updateListItem()
         
+        if not self.listItem:
+            return
+        
+        dockWidget = self.listItem.dockWidget
+        if dockWidget.activeImageEntry == self:
+            dockWidget.refreshActiveImageEntry()
+        
         # TODO: update the property editor in the dock widget
 
     def itemChange(self, change, value):
@@ -470,6 +477,21 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.selectionUnderway = False
         self.selectionSynchronisationUnderway = False
         
+        self.positionX = self.findChild(QLineEdit, "positionX")
+        self.positionX.textChanged.connect(self.slot_positionXChanged)
+        self.positionY = self.findChild(QLineEdit, "positionY")
+        self.positionY.textChanged.connect(self.slot_positionYChanged)
+        self.width = self.findChild(QLineEdit, "width")
+        self.width.textChanged.connect(self.slot_widthChanged)
+        self.height = self.findChild(QLineEdit, "height")
+        self.height.textChanged.connect(self.slot_heightChanged)
+        self.offsetX = self.findChild(QLineEdit, "offsetX")
+        self.offsetX.textChanged.connect(self.slot_offsetXChanged)
+        self.offsetY = self.findChild(QLineEdit, "offsetY")
+        self.offsetY.textChanged.connect(self.slot_offsetYChanged)
+        
+        self.setActiveImageEntry(None)
+        
     def setImagesetEntry(self, imagesetEntry):
         self.imagesetEntry = imagesetEntry
         
@@ -500,7 +522,48 @@ class ImagesetEditorDockWidget(QDockWidget):
         # explicitly call the filtering again to make sure it's in sync    
         self.filterChanged(self.filterBox.text())
 
+    def setActiveImageEntry(self, imageEntry):
+        self.activeImageEntry = imageEntry
+        
+        self.refreshActiveImageEntry()
+    
+    def refreshActiveImageEntry(self):
+        if not self.activeImageEntry:
+            self.positionX.setText("")
+            self.positionX.setEnabled(False)
+            self.positionY.setText("")
+            self.positionY.setEnabled(False)
+            self.width.setText("")
+            self.width.setEnabled(False)
+            self.height.setText("")
+            self.height.setEnabled(False)
+            self.offsetX.setText("")
+            self.offsetX.setEnabled(False)
+            self.offsetY.setText("")
+            self.offsetY.setEnabled(False)
+            
+        else:
+            self.positionX.setText(str(self.activeImageEntry.xpos))
+            self.positionX.setEnabled(True)
+            self.positionY.setText(str(self.activeImageEntry.ypos))
+            self.positionY.setEnabled(True)
+            self.width.setText(str(self.activeImageEntry.width))
+            self.width.setEnabled(True)
+            self.height.setText(str(self.activeImageEntry.height))
+            self.height.setEnabled(True)
+            self.offsetX.setText(str(self.activeImageEntry.xoffset))
+            self.offsetX.setEnabled(True)
+            self.offsetY.setText(str(self.activeImageEntry.yoffset))
+            self.offsetY.setEnabled(True)
+
     def slot_itemSelectionChanged(self):
+        imageEntryNames = self.list.selectedItems()
+        if len(imageEntryNames) == 1:
+            imageEntry = imageEntryNames[0].imageEntry
+            self.setActiveImageEntry(imageEntry)
+        else:
+            self.setActiveImageEntry(None)
+            
         # we are getting synchronised with the visual editing pane, do not interfere
         if self.selectionSynchronisationUnderway:
             return
@@ -511,11 +574,9 @@ class ImagesetEditorDockWidget(QDockWidget):
         imageEntryNames = self.list.selectedItems()
         for imageEntryName in imageEntryNames:
             imageEntry = imageEntryName.imageEntry
-            #imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryName.text())
             imageEntry.setSelected(True)
             
         if len(imageEntryNames) == 1:
-            #imageEntry = self.parent.imagesetEntry.getImageEntry(imageEntryNames[0].text())
             imageEntry = imageEntryNames[0].imageEntry
             self.parent.centerOn(imageEntry)
             
@@ -585,6 +646,43 @@ class ImagesetEditorDockWidget(QDockWidget):
         
         cmd = undo.ImagesetChangeNativeResolutionCommand(self.parent, oldHorzRes, oldVertRes, newHorzRes, newVertRes)
         self.parent.parent.undoStack.push(cmd)
+
+    def metaslot_propertyChanged(self, propertyName, newTextValue):
+        if not self.activeImageEntry:
+            return
+        
+        oldValue = getattr(self.activeImageEntry, propertyName)
+        newValue = None
+        
+        try:
+            newValue = int(newTextValue)
+        except ValueError:
+            # if the string is not a valid integer literal, we allow user to edit some more
+            return
+        
+        if oldValue == newValue:
+            return
+        
+        cmd = undo.PropertyEditCommand(self.parent, self.activeImageEntry.name, propertyName, oldValue, newValue)
+        self.parent.parent.undoStack.push(cmd)
+
+    def slot_positionXChanged(self, text):
+        self.metaslot_propertyChanged("xpos", text)
+
+    def slot_positionYChanged(self, text):
+        self.metaslot_propertyChanged("ypos", text)
+        
+    def slot_widthChanged(self, text):
+        self.metaslot_propertyChanged("width", text)
+        
+    def slot_heightChanged(self, text):
+        self.metaslot_propertyChanged("height", text)
+        
+    def slot_offsetXChanged(self, text):
+        self.metaslot_propertyChanged("xoffset", text)
+
+    def slot_offsetYChanged(self, text):
+        self.metaslot_propertyChanged("yoffset", text)
 
 class VisualEditing(QGraphicsView):
     def __init__(self, parent):
