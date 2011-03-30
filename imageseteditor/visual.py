@@ -50,6 +50,9 @@ class ImageLabel(QGraphicsTextItem):
         # the default opacity (when mouse is not over the label)
         self.setOpacity(0.8)
         
+        # be invisible by default and wait for hover/selection events
+        self.setVisible(False)
+        
     def paint(self, painter, option, widget):
         painter.fillRect(self.boundingRect(), QColor(Qt.white))
         painter.drawRect(self.boundingRect())
@@ -200,8 +203,6 @@ class ImageEntry(QGraphicsRectItem):
         
         self.xoffset = int(element.get("XOffset", 0))
         self.yoffset = int(element.get("YOffset", 0))
-                
-        self.label.setVisible(False)
         
     def saveToElement(self):
         ret = ElementTree.Element("Image")
@@ -496,7 +497,21 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.imagesetEntry = imagesetEntry
         
     def refresh(self):
-        self.list.clear()
+        # FIXME: This is really really weird!
+        #        If I call list.clear() it crashes when undoing image deletes for some reason
+        #        I already spent several hours tracking it down and I couldn't find anything
+        #
+        #        If I remove items one by one via takeItem, everything works :-/
+        #self.list.clear()
+        
+        self.selectionSynchronisationUnderway = True
+        
+        while self.list.takeItem(0):
+            pass
+        
+        self.selectionSynchronisationUnderway = False
+
+        self.setActiveImageEntry(None)
         
         self.name.setText(self.imagesetEntry.name)
         self.image.setText(self.imagesetEntry.getAbsoluteImageFile())
@@ -555,6 +570,17 @@ class ImagesetEditorDockWidget(QDockWidget):
             self.offsetX.setEnabled(True)
             self.offsetY.setText(str(self.activeImageEntry.yoffset))
             self.offsetY.setEnabled(True)
+            
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            selection = self.parent.scene.selectedItems()
+            
+            handled = self.parent.deleteImageEntries(selection)
+            
+            if handled:
+                return True
+        
+        return super(ImagesetEditorDockWidget, self).keyReleaseEvent(event)  
 
     def slot_itemSelectionChanged(self):
         imageEntryNames = self.list.selectedItems()
@@ -735,7 +761,6 @@ class VisualEditing(QGraphicsView):
     def loadImagesetEntryFromElement(self, element):
         self.scene.clear()
         
-        self.imagesetEntry = None
         self.imagesetEntry = ImagesetEntry(self)
         self.imagesetEntry.loadFromElement(element)
         
@@ -857,6 +882,30 @@ class VisualEditing(QGraphicsView):
         # we didn't handle this
         return False
     
+    def deleteImageEntries(self, imageEntries):
+        if len(imageEntries) > 0:
+            oldNames = []
+            
+            oldPositions = {}
+            oldRects = {}
+            oldOffsets = {}
+            
+            for imageEntry in imageEntries:
+                oldNames.append(imageEntry.name)
+                
+                oldPositions[imageEntry.name] = imageEntry.pos()
+                oldRects[imageEntry.name] = imageEntry.rect()
+                oldOffsets[imageEntry.name] = imageEntry.offset.pos()
+            
+            cmd = undo.DeleteCommand(self, oldNames, oldPositions, oldRects, oldOffsets)
+            self.parent.undoStack.push(cmd)
+            
+            return True
+        
+        else:
+            # we didn't handle this
+            return False
+    
     def showEvent(self, event):
         super(VisualEditing, self).showEvent(event)
         
@@ -971,7 +1020,12 @@ class VisualEditing(QGraphicsView):
                 
         elif event.key() == Qt.Key_Q:
             handled = self.cycleOverlappingImages()
-                        
+        
+        elif event.key() == Qt.Key_Delete:
+            selection = self.scene.selectedItems()
+            
+            handled = self.deleteImageEntries(selection)               
+            
         if not handled:
             super(VisualEditing, self).keyReleaseEvent(event)
             

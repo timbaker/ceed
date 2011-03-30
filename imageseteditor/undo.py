@@ -17,10 +17,10 @@
 ################################################################################
 
 import commands
+import visual as visual_module
+
 import copy
 import math
-
-from PySide import QtCore
 
 idbase = 1100
 
@@ -326,6 +326,60 @@ class PropertyEditCommand(commands.UndoCommand):
    
         super(PropertyEditCommand, self).redo()
 
+class DeleteCommand(commands.UndoCommand):
+    """Deletes given image entries
+    """
+    
+    def __init__(self, visual, imageNames, oldPositions, oldRects, oldOffsets):
+        super(DeleteCommand, self).__init__()
+        
+        self.visual = visual
+        
+        self.imageNames = imageNames
+        
+        self.oldPositions = oldPositions
+        self.oldRects = oldRects
+        self.oldOffsets = oldOffsets
+        
+        if len(self.imageNames) == 1:
+            self.setText("Delete '%s'" % (self.imageNames[0]))
+        else:
+            self.setText("Delete %i images" % (len(self.imageNames)))
+
+    def id(self):
+        return idbase + 6
+    
+    def undo(self):
+        super(DeleteCommand, self).undo()
+        
+        for imageName in self.imageNames:
+            image = visual_module.ImageEntry(self.visual.imagesetEntry)
+            self.visual.imagesetEntry.imageEntries.append(image)
+            
+            image.name = imageName
+            image.setPos(self.oldPositions[imageName])
+            image.setRect(self.oldRects[imageName])
+            image.offset.setPos(self.oldOffsets[imageName])
+            
+        self.visual.dockWidget.refresh()
+        
+    def redo(self):
+        for imageName in self.imageNames:
+            image = self.visual.imagesetEntry.getImageEntry(imageName)
+            self.visual.imagesetEntry.imageEntries.remove(image)
+            
+            image.listItem.imageEntry = None
+            image.listItem = None
+            
+            image.setParentItem(None)
+            self.visual.scene.removeItem(image)
+            
+            del image      
+            
+        self.visual.dockWidget.refresh()
+            
+        super(DeleteCommand, self).redo()
+
 class ImagesetRenameCommand(commands.UndoCommand):
     """Changes name of the imageset
     """
@@ -344,7 +398,7 @@ class ImagesetRenameCommand(commands.UndoCommand):
         self.setText("Rename imageset from '%s' to '%s'" % (self.oldName, self.newName))
                 
     def id(self):
-        return idbase + 6
+        return idbase + 7
     
     def mergeWith(self, cmd):
         self.newName = cmd.newName
@@ -384,7 +438,7 @@ class ImagesetChangeImageCommand(commands.UndoCommand):
         self.setText("Change underlying image from '%s' to '%s'" % (self.oldImageFile, self.newImageFile))
                 
     def id(self):
-        return idbase + 7
+        return idbase + 8
     
     def mergeWith(self, cmd):
         self.newImageFile = cmd.newImageFile
@@ -426,7 +480,7 @@ class ImagesetChangeNativeResolutionCommand(commands.UndoCommand):
         self.setText("Change imageset's native resolution to %ix%i" % (self.newHorzRes, self.newVertRes))
                 
     def id(self):
-        return idbase + 8
+        return idbase + 9
     
     def mergeWith(self, cmd):
         self.newHorzRes = cmd.newHorzRes
@@ -472,7 +526,7 @@ class ImagesetChangeAutoScaledCommand(commands.UndoCommand):
         self.setText("%s imageset auto scale" % ("Enabled" if self.newAutoScaled else "Disabled"))
                 
     def id(self):
-        return idbase + 9
+        return idbase + 10
     
     def mergeWith(self, cmd):
         self.newAutoScaled = cmd.newAutoScaled
@@ -520,7 +574,7 @@ class XMLEditingCommand(commands.UndoCommand):
             self.setText("XML edit, changed %i characters" % (self.totalChange))
         
     def id(self):
-        return idbase + 10
+        return idbase + 11
         
     def mergeWith(self, cmd):
         assert(self.xmlediting == cmd.xmlediting)
