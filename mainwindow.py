@@ -243,6 +243,20 @@ class MainWindow(QMainWindow):
         
     def quit(self):
         #self.saveSettings()
+        if self.project:
+            self.closeProject()
+        
+        lastTab = None
+        while len(self.tabEditors) > 0:
+            currentTab = self.tabs.widget(0)
+            if currentTab == lastTab:
+                # user pressed cancel on one of the tab editor 'save without changes' dialog,
+                # cancel the whole quit operation!
+                return False
+            lastTab = currentTab
+            
+            self.slot_tabCloseRequested(0)
+            
         self.app.exit(0)
         
     def slot_newProject(self):
@@ -408,8 +422,13 @@ class MainWindow(QMainWindow):
         dialog.exec_()
     
     def slot_quit(self):
-        self.quit()
+        return self.quit()
 
     def closeEvent(self, event):
-        self.slot_quit()
-    
+        handled = self.slot_quit()
+        
+        if not handled:
+            event.ignore()
+            
+        else:
+            event.accept()
