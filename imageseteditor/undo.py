@@ -17,7 +17,7 @@
 ################################################################################
 
 import commands
-import visual as visual_module
+import elements
 
 import copy
 import math
@@ -326,6 +326,58 @@ class PropertyEditCommand(commands.UndoCommand):
    
         super(PropertyEditCommand, self).redo()
 
+class CreateCommand(commands.UndoCommand):
+    """Creates one image with given parameters
+    """
+    
+    def __init__(self, visual, name, xpos, ypos, width, height, xoffset, yoffset):
+        super(CreateCommand, self).__init__()
+        
+        self.visual = visual
+        
+        self.name = name
+        
+        self.xpos = xpos
+        self.ypos = ypos
+        self.width = width
+        self.height = height
+        self.xoffset = xoffset
+        self.yoffset = yoffset
+        
+        self.setText("Create image '%s'" % (self.name))
+        
+    def id(self):
+        return idbase + 6
+    
+    def undo(self):
+        super(CreateCommand, self).undo()
+        
+        image = self.visual.imagesetEntry.getImageEntry(self.name)
+        self.visual.imagesetEntry.imageEntries.remove(image)
+        
+        image.listItem.imageEntry = None
+        image.listItem = None
+        
+        image.setParentItem(None)
+        self.visual.scene.removeItem(image)
+            
+        self.visual.dockWidget.refresh()
+        
+    def redo(self):
+        image = elements.ImageEntry(self.visual.imagesetEntry)
+        self.visual.imagesetEntry.imageEntries.append(image)
+        
+        image.name = self.name
+        image.xpos = self.xpos
+        image.ypos = self.ypos
+        image.width = self.width
+        image.height = self.height
+        image.xoffset = self.xoffset
+        image.yoffset = self.yoffset
+        self.visual.dockWidget.refresh()
+            
+        super(CreateCommand, self).redo()
+
 class DeleteCommand(commands.UndoCommand):
     """Deletes given image entries
     """
@@ -347,13 +399,13 @@ class DeleteCommand(commands.UndoCommand):
             self.setText("Delete %i images" % (len(self.imageNames)))
 
     def id(self):
-        return idbase + 6
+        return idbase + 7
     
     def undo(self):
         super(DeleteCommand, self).undo()
         
         for imageName in self.imageNames:
-            image = visual_module.ImageEntry(self.visual.imagesetEntry)
+            image = elements.ImageEntry(self.visual.imagesetEntry)
             self.visual.imagesetEntry.imageEntries.append(image)
             
             image.name = imageName
@@ -398,7 +450,7 @@ class ImagesetRenameCommand(commands.UndoCommand):
         self.setText("Rename imageset from '%s' to '%s'" % (self.oldName, self.newName))
                 
     def id(self):
-        return idbase + 7
+        return idbase + 8
     
     def mergeWith(self, cmd):
         self.newName = cmd.newName
@@ -438,7 +490,7 @@ class ImagesetChangeImageCommand(commands.UndoCommand):
         self.setText("Change underlying image from '%s' to '%s'" % (self.oldImageFile, self.newImageFile))
                 
     def id(self):
-        return idbase + 8
+        return idbase + 9
     
     def mergeWith(self, cmd):
         self.newImageFile = cmd.newImageFile
@@ -480,7 +532,7 @@ class ImagesetChangeNativeResolutionCommand(commands.UndoCommand):
         self.setText("Change imageset's native resolution to %ix%i" % (self.newHorzRes, self.newVertRes))
                 
     def id(self):
-        return idbase + 9
+        return idbase + 10
     
     def mergeWith(self, cmd):
         self.newHorzRes = cmd.newHorzRes
@@ -526,7 +578,7 @@ class ImagesetChangeAutoScaledCommand(commands.UndoCommand):
         self.setText("%s imageset auto scale" % ("Enabled" if self.newAutoScaled else "Disabled"))
                 
     def id(self):
-        return idbase + 10
+        return idbase + 11
     
     def mergeWith(self, cmd):
         self.newAutoScaled = cmd.newAutoScaled
@@ -574,7 +626,7 @@ class XMLEditingCommand(commands.UndoCommand):
             self.setText("XML edit, changed %i characters" % (self.totalChange))
         
     def id(self):
-        return idbase + 11
+        return idbase + 12
         
     def mergeWith(self, cmd):
         assert(self.xmlediting == cmd.xmlediting)
