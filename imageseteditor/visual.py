@@ -529,7 +529,6 @@ class VisualEditing(QGraphicsView):
         self.parent.undoStack.push(cmd)
     
     def createImageAtCursor(self):
-        #viewportCoordinates = self.mapFromGlobal(self.lastMousePosition)
         sceneCoordinates = self.mapToScene(self.lastMousePosition)
         
         self.createImage(int(sceneCoordinates.x()), int(sceneCoordinates.y()))
