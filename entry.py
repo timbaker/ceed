@@ -17,11 +17,76 @@
 ################################################################################
 
 import sys
-from PySide.QtGui import QApplication, QSplashScreen
+import os
+import math
+
+from PySide.QtCore import Qt, QTimer, QPoint
+from PySide.QtGui import QApplication, QSplashScreen, QPixmap
 
 import compileuifiles
 
+def fixCwd():
+    """Sets CWD as the applications install directory"""
+    
+    # this is necessary when starting the app via shortcuts
+    
+    # atrocious and unholy!
+    def getInstallDir():
+        dir = os.path.dirname(os.path.abspath(__file__))
+
+        if dir.endswith("library.zip"):
+            # if this is a frozen copy, we have to strip library.zip
+            dir = os.path.dirname(dir)
+            
+        return dir
+
+    os.chdir(getInstallDir())
+
+class SplashScreen(QSplashScreen):
+    def __init__(self):
+        super(SplashScreen, self).__init__(QPixmap("images/splashscreen.png"))
+        
+        self.lastMousePosition = None
+        
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setMouseTracking(True)
+        
+        self.fadeTimer = QTimer(self)
+        self.fadeTimer.timeout.connect(self.fadeTicker)
+
+        self.showMessage("(Only imageset editing implemented!) | Version: pre-release", Qt.AlignTop | Qt.AlignRight, Qt.GlobalColor.white)
+        
+    def mouseMoveEvent(self, event):
+        if not self.lastMousePosition:
+            self.lastMousePosition = event.pos()
+            
+        delta = event.pos() - self.lastMousePosition
+
+        if delta.manhattanLength() > 10:
+            self.fadeOut()
+        
+    def mousePressEvent(self, event):
+        self.fadeOut()
+
+    def fadeOut(self):
+        # 10 msec interval = 50 fps
+        self.fadeTimer.start(20)
+
+    def fadeTicker(self):
+        newOpacity = self.windowOpacity() - 0.003 * self.fadeTimer.interval()
+        if newOpacity < 0:
+            self.fadeTimer.stop()
+            self.close()
+            return
+        
+        self.setWindowOpacity(newOpacity)
+        self.move(self.pos() + QPoint(0, 1))
+        self.update()
+
 def main():
+    fixCwd()
+    
     # first recompile all UI files to ensure they are up to date
     compileuifiles.compileUIFiles("./ui")
     compileuifiles.compileUIFiles("./ui/imageseteditor")
@@ -36,14 +101,11 @@ def main():
     app.setApplicationName("CEED - CEGUI editor")
     app.setApplicationVersion("0.1 - WIP")
     
-    splash = QSplashScreen()
+    splash = SplashScreen()
     splash.show()
-    splash.showMessage("Testing...")
-
-    wnd = mainwindow.MainWindow(app)
-    wnd.show()
     
-    splash.finish(wnd)
+    wnd = mainwindow.MainWindow(app)
+    wnd.showMaximized()
     
     app.exec_()
 

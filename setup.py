@@ -37,6 +37,7 @@ buildOptions = dict(
     include_files =
     [
         "icons",
+        "images",
         "ui", # FIXME: because we always rebuild those upon starting
         "data",
         
