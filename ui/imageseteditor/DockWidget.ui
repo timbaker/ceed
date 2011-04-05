@@ -117,7 +117,7 @@
        <item row="2" column="2">
         <widget class="QPushButton" name="imageLoad">
          <property name="text">
-          <string>Load</string>
+          <string>Load image</string>
          </property>
         </widget>
        </item>

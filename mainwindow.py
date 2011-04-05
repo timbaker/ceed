@@ -30,10 +30,12 @@ import filesystembrowser
 import propertyinspector
 
 import tab
+
 # the various editor imports
 import bitmapeditor
 import texteditor
 import imageseteditor
+import layouteditor
 
 import about
 
@@ -49,7 +51,8 @@ class MainWindow(QMainWindow):
         self.editorFactories = [
             bitmapeditor.BitmapTabbedEditorFactory(),
             texteditor.TextTabbedEditorFactory(),
-            imageseteditor.ImagesetTabbedEditorFactory()
+            imageseteditor.ImagesetTabbedEditorFactory(),
+            layouteditor.LayoutTabbedEditorFactory()
         ]
         
         self.activeEditor = None
@@ -222,12 +225,16 @@ class MainWindow(QMainWindow):
                        "check that it's a file CEED supports and that it has the correct extension "
                        "(CEED enforces proper extensions)" % (absolutePath, filePath))
         
+        if not self.project and ret.requiresProject:
+            ret = tab.MessageTabbedEditor(absolutePath,
+                       "Opening this file requires you to have a project opened!")
+        
         ret.initialise(self)
         self.tabEditors.append(ret)
         
         return ret    
 
-    def openFileTab(self, absolutePath):
+    def openEditorTab(self, absolutePath):
         absolutePath = os.path.normpath(absolutePath)
         
         for tabEditor in self.tabEditors:            
@@ -358,14 +365,14 @@ class MainWindow(QMainWindow):
         
         file, filter = QFileDialog.getSaveFileName(self, "New File", dir)
         
-        f = open(file, "w")
-        f.close()
-        
         if file:
-            self.openFileTab(file)
+            f = open(file, "w")
+            f.close()
+
+            self.openEditorTab(file)
     
     def slot_openFile(self, absolutePath):
-        self.openFileTab(absolutePath)
+        self.openEditorTab(absolutePath)
     
     def slot_openFileDialog(self):
         dir = ""
@@ -375,7 +382,7 @@ class MainWindow(QMainWindow):
         file, filter = QFileDialog.getOpenFileName(self, "Open File", dir)
         
         if file:
-            self.openFileTab(file)
+            self.openEditorTab(file)
     
     def slot_currentTabChanged(self, index):
         wdt = self.tabs.widget(index)
@@ -393,6 +400,9 @@ class MainWindow(QMainWindow):
         # also reset their texts in case the tabbed editor messed with them
         self.undoAction.setText("Undo")
         self.redoAction.setText("Redo")
+        # set undo stack to None as we have no idea whether the previous tab editor
+        # set it to something else
+        self.undoViewer.setUndoStack(None)
         
         # we also clear the status bar
         self.statusBar().clearMessage()

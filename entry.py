@@ -18,7 +18,6 @@
 
 import sys
 import os
-import math
 
 from PySide.QtCore import Qt, QTimer, QPoint
 from PySide.QtGui import QApplication, QSplashScreen, QPixmap
@@ -32,7 +31,9 @@ def fixCwd():
     
     # atrocious and unholy!
     def getInstallDir():
-        dir = os.path.dirname(os.path.abspath(__file__))
+        import fake
+        
+        dir = os.path.dirname(os.path.abspath(fake.__file__))
 
         if dir.endswith("library.zip"):
             # if this is a frozen copy, we have to strip library.zip

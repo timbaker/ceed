@@ -16,27 +16,6 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-from PySide.QtGui import QUndoCommand, QDockWidget, QUndoView, QIcon
+import commands
 
-class UndoCommand(QUndoCommand):
-    def __init__(self):
-        super(UndoCommand, self).__init__()
-    
-class UndoViewer(QDockWidget):
-    def __init__(self):
-        super(UndoViewer, self).__init__()
-        
-        self.setWindowTitle("Undo Viewer")
-        
-        self.view = QUndoView()
-        self.view.setCleanIcon(QIcon("icons/clean_undo_state.png"))
-        self.setWidget(self.view)
-        
-    def setUndoStack(self, stack):
-        self.view.setStack(stack)
-        
-        if stack:
-            self.setEnabled(True)
-        else:
-            self.setEnabled(False)
-        
+idbase = 1200

@@ -50,7 +50,7 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
     
     def initialise(self, mainWindow):
         super(ImagesetTabbedEditor, self).initialise(mainWindow)
-        
+    
         root = None
         try:
             tree = ElementTree.parse(self.filePath)

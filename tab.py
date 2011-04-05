@@ -29,6 +29,8 @@ class TabbedEditor(object):
     """
     
     def __init__(self, filePath):
+        self.requiresProject = False
+        
         self.initialised = False
         self.active = False
         
@@ -216,7 +218,6 @@ class UndoStackTabbedEditor(TabbedEditor):
         
     def initialise(self, mainWindow):
         super(UndoStackTabbedEditor, self).initialise(mainWindow)
-        
         self.undoStack.clear()
         
     def activate(self):
