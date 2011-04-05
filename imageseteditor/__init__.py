@@ -19,6 +19,9 @@
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+import os
+import sys
+
 import tab
 import mixedtab
 import xmledit
@@ -48,8 +51,35 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
     def initialise(self, mainWindow):
         super(ImagesetTabbedEditor, self).initialise(mainWindow)
         
-        tree = ElementTree.parse(self.filePath)
-        root = tree.getroot()
+        root = None
+        try:
+            tree = ElementTree.parse(self.filePath)
+            root = tree.getroot()
+            
+        except:
+            # things didn't go smooth
+            # 2 reasons for that
+            #  * the file is empty
+            #  * the contents of the file are invalid
+            #
+            # In the first case we will silently move along (it is probably just a new file),
+            # in the latter we will output a message box informing about the situation
+            
+            # the file should exist at this point, so we are not checking and letting exceptions
+            # fly out of this method
+            if os.path.getsize(self.filePath) > 2:
+                # the file contains more than just CR LF
+                QMessageBox.question(self,
+                                     "Can't parse given imageset!",
+                                     "Parsing '%s' failed, it's most likely not a valid XML file. "
+                                     "Constructing empty imageset instead (if you save you will override the invalid data!). "
+                                     "Exception details follow: %s" % (self.filePath, sys.exc_info()[0]),
+                                     QMessageBox.Ok)
+            
+            # we construct the minimal empty imageset    
+            root = ElementTree.Element("Imageset")
+            root.set("Name", "")
+            root.set("Imagefile", "")
         
         self.visual.initialise(root)
     

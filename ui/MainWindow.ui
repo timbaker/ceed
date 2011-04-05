@@ -82,25 +82,12 @@
     <property name="title">
      <string>File</string>
     </property>
-    <widget class="QMenu" name="menuRecentProjects">
-     <property name="title">
-      <string>Recent projects</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>icons/actions/recent_projects.png</normaloff>icons/actions/recent_projects.png</iconset>
-     </property>
-     <addaction name="actionNoRecentProjects"/>
-    </widget>
+    <addaction name="actionNewFile"/>
+    <addaction name="actionOpenFile"/>
+    <addaction name="separator"/>
     <addaction name="actionSave"/>
     <addaction name="actionSaveAll"/>
     <addaction name="actionClose"/>
-    <addaction name="separator"/>
-    <addaction name="menuRecentProjects"/>
-    <addaction name="actionSaveProject"/>
-    <addaction name="actionNewProject"/>
-    <addaction name="actionOpenProject"/>
-    <addaction name="actionCloseProject"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -111,7 +98,6 @@
     <addaction name="actionUndo"/>
     <addaction name="actionRedo"/>
     <addaction name="separator"/>
-    <addaction name="actionProjectSettings"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -125,10 +111,25 @@
     </property>
     <addaction name="actionProjectManagerVisible"/>
     <addaction name="actionFileSystemBrowserVisible"/>
+    <addaction name="actionUndoViewerVisible"/>
+    <addaction name="separator"/>
     <addaction name="actionCEGUIDebugInfoVisible"/>
+   </widget>
+   <widget class="QMenu" name="menuProject">
+    <property name="title">
+     <string>Project</string>
+    </property>
+    <addaction name="actionNewProject"/>
+    <addaction name="separator"/>
+    <addaction name="actionOpenProject"/>
+    <addaction name="actionSaveProject"/>
+    <addaction name="actionCloseProject"/>
+    <addaction name="separator"/>
+    <addaction name="actionProjectSettings"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
+   <addaction name="menuProject"/>
    <addaction name="menuPanels"/>
    <addaction name="menuAbout"/>
   </widget>
@@ -149,14 +150,16 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionSaveProject"/>
-   <addaction name="actionProjectSettings"/>
-   <addaction name="separator"/>
+   <addaction name="actionNewFile"/>
+   <addaction name="actionOpenFile"/>
    <addaction name="actionSave"/>
    <addaction name="actionSaveAll"/>
    <addaction name="separator"/>
-   <addaction name="actionRedo"/>
+   <addaction name="actionSaveProject"/>
+   <addaction name="actionProjectSettings"/>
+   <addaction name="separator"/>
    <addaction name="actionUndo"/>
+   <addaction name="actionRedo"/>
   </widget>
   <action name="actionQuit">
    <property name="icon">
@@ -268,11 +271,6 @@
     <string>Ctrl+P</string>
    </property>
   </action>
-  <action name="actionNoRecentProjects">
-   <property name="text">
-    <string>&lt;no recent projects&gt;</string>
-   </property>
-  </action>
   <action name="actionSaveProject">
    <property name="icon">
     <iconset>
@@ -319,6 +317,32 @@
   <action name="actionLicense">
    <property name="text">
     <string>License</string>
+   </property>
+  </action>
+  <action name="actionNewFile">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/actions/new_file.png</normaloff>icons/actions/new_file.png</iconset>
+   </property>
+   <property name="text">
+    <string>New file</string>
+   </property>
+  </action>
+  <action name="actionOpenFile">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/actions/open_file.png</normaloff>icons/actions/open_file.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open file</string>
+   </property>
+  </action>
+  <action name="actionUndoViewerVisible">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Undo Viewer</string>
    </property>
   </action>
  </widget>

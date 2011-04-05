@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.fileSystemBrowser)
         
         self.undoViewer = commands.UndoViewer()
+        self.undoViewer.setVisible(False)
         self.addDockWidget(Qt.RightDockWidgetArea, self.undoViewer)
         
         self.connectActions()
@@ -92,6 +93,27 @@ class MainWindow(QMainWindow):
         #self.restoreSettings()
     
     def connectActions(self):
+        self.newFileAction = self.findChild(QAction, "actionNewFile")
+        self.newFileAction.triggered.connect(self.slot_newFileDialog)
+        
+        self.openFileAction = self.findChild(QAction, "actionOpenFile")
+        self.openFileAction.triggered.connect(self.slot_openFileDialog)
+        
+        self.saveAction = self.findChild(QAction, "actionSave")
+        self.saveAction.triggered.connect(self.slot_save)
+        self.saveAction.setEnabled(False)
+        self.saveAllAction = self.findChild(QAction, "actionSaveAll")
+        self.saveAllAction.setEnabled(False)
+        self.closeAction = self.findChild(QAction, "actionClose")
+        self.closeAction.setEnabled(False)
+        
+        self.undoAction = self.findChild(QAction, "actionUndo")
+        self.undoAction.triggered.connect(self.slot_undo)
+        self.undoAction.setEnabled(False)
+        self.redoAction = self.findChild(QAction, "actionRedo")
+        self.redoAction.triggered.connect(self.slot_redo)
+        self.redoAction.setEnabled(False)
+        
         self.newProjectAction = self.findChild(QAction, "actionNewProject")
         self.newProjectAction.triggered.connect(self.slot_newProject)
         
@@ -113,21 +135,6 @@ class MainWindow(QMainWindow):
         # when this starts up, no project is opened, hence you can't view/edit settings of the current project
         self.projectSettingsAction.setEnabled(False)
         
-        self.saveAction = self.findChild(QAction, "actionSave")
-        self.saveAction.triggered.connect(self.slot_save)
-        self.saveAction.setEnabled(False)
-        self.saveAllAction = self.findChild(QAction, "actionSaveAll")
-        self.saveAllAction.setEnabled(False)
-        self.closeAction = self.findChild(QAction, "actionClose")
-        self.closeAction.setEnabled(False)
-        
-        self.undoAction = self.findChild(QAction, "actionUndo")
-        self.undoAction.triggered.connect(self.slot_undo)
-        self.undoAction.setEnabled(False)
-        self.redoAction = self.findChild(QAction, "actionRedo")
-        self.redoAction.triggered.connect(self.slot_redo)
-        self.redoAction.setEnabled(False)
-        
         self.licenseAction = self.findChild(QAction, "actionLicense")
         self.licenseAction.triggered.connect(self.slot_license)
         
@@ -135,16 +142,20 @@ class MainWindow(QMainWindow):
         self.quitAction.triggered.connect(self.slot_quit)
         
     def connectSignals(self):
-        self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiWidget.debugInfo.setVisible)
-        self.ceguiWidget.debugInfo.visibilityChanged.connect(self.findChild(QAction, "actionCEGUIDebugInfoVisible").setChecked)
-        
         self.projectManager.fileOpenRequested.connect(self.slot_openFile)
         self.findChild(QAction, "actionProjectManagerVisible").toggled.connect(self.projectManager.setVisible)
         self.projectManager.visibilityChanged.connect(self.findChild(QAction, "actionProjectManagerVisible").setChecked)
         
         self.fileSystemBrowser.fileOpenRequested.connect(self.slot_openFile)
+        
         self.findChild(QAction, "actionFileSystemBrowserVisible").toggled.connect(self.fileSystemBrowser.setVisible)
         self.fileSystemBrowser.visibilityChanged.connect(self.findChild(QAction, "actionFileSystemBrowserVisible").setChecked)
+
+        self.findChild(QAction, "actionUndoViewerVisible").toggled.connect(self.undoViewer.setVisible)
+        self.undoViewer.visibilityChanged.connect(self.findChild(QAction, "actionUndoViewerVisible").setChecked)
+
+        self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiWidget.debugInfo.setVisible)
+        self.ceguiWidget.debugInfo.visibilityChanged.connect(self.findChild(QAction, "actionCEGUIDebugInfoVisible").setChecked)
         
     def openProject(self, path):
         assert(not self.project)
@@ -243,8 +254,9 @@ class MainWindow(QMainWindow):
         
     def quit(self):
         #self.saveSettings()
+        
         if self.project:
-            self.closeProject()
+            self.slot_closeProject()
         
         lastTab = None
         while len(self.tabEditors) > 0:
@@ -339,8 +351,31 @@ class MainWindow(QMainWindow):
             dialog.apply(self.project)
             self.ceguiWidget.syncToProject(self.project)
     
+    def slot_newFileDialog(self):
+        dir = ""
+        if self.project:
+            dir = self.project.getAbsolutePathOf("")
+        
+        file, filter = QFileDialog.getSaveFileName(self, "New File", dir)
+        
+        f = open(file, "w")
+        f.close()
+        
+        if file:
+            self.openFileTab(file)
+    
     def slot_openFile(self, absolutePath):
         self.openFileTab(absolutePath)
+    
+    def slot_openFileDialog(self):
+        dir = ""
+        if self.project:
+            dir = self.project.getAbsolutePathOf("")
+        
+        file, filter = QFileDialog.getOpenFileName(self, "Open File", dir)
+        
+        if file:
+            self.openFileTab(file)
     
     def slot_currentTabChanged(self, index):
         wdt = self.tabs.widget(index)
