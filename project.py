@@ -64,6 +64,8 @@ class Item(QStandardItem):
         
         self.project = project
         self.itemType = Item.Unknown
+        
+        self.project.changed = True
     
     def type(self):
         # Qt docs say we have to overload type() and return something > QStandardItem.UserType
@@ -150,6 +152,8 @@ class Item(QStandardItem):
                     break
             
         self.icon = "icons/project_items/%s.png" % (fileType)
+        
+        self.project.changed = True
             
     def getPath(self):
         assert(self.itemType == Item.File)
@@ -165,6 +169,8 @@ class Item(QStandardItem):
         # TODO: Override the sorting method and make this work more cleanly
         self.label = " %s" % (value)
         self.icon = "icons/project_items/folder.png"
+        
+        self.project.changed = True
         
     def getName(self):
         assert(self.itemType == Item.Folder)
@@ -280,7 +286,7 @@ class Project(QStandardItemModel):
             
         self.changed = False
         self.projectFilePath = path
-        
+
     def unload(self):
         pass
 

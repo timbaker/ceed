@@ -60,10 +60,7 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
             self.parent.mainWindow.ceguiWidget.injectInput = False
             self.parent.mainWindow.ceguiWidget.hide()
             self.parent.mainWindow.ceguiWidget.setParent(None)
-            
-            # we have to make the context the current context to ensure textures are fine
-            self.parent.mainWindow.ceguiWidget.makeCurrent()
-            
+
             PyCEGUI.System.getSingleton().setGUISheet(None)
             
         super(LayoutPreviewer, self).hideEvent(event)

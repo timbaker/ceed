@@ -264,7 +264,9 @@ class MainWindow(QMainWindow):
         #self.saveSettings()
         
         if self.project:
-            self.slot_closeProject()
+            # if the slot returned False, user pressed Cancel
+            if not self.slot_closeProject():
+                return False
         
         lastTab = None
         while len(self.tabEditors) > 0:
@@ -347,10 +349,13 @@ class MainWindow(QMainWindow):
             
             if result == QMessageBox.Save:
                 self.saveProject()
+                return True
+            
             elif result == QMessageBox.Cancel:
-                return
+                return False
             
         self.closeProject()
+        return True
         
     def slot_projectSettings(self):
         dialog = project.ProjectSettingsDialog(self.project)
