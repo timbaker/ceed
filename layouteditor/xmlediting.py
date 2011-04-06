@@ -24,6 +24,8 @@ from xml.etree import ElementTree
 import undo
 import xmledit
 
+import PyCEGUI
+
 class XMLEditing(xmledit.XMLEditWidget):
     def __init__(self, parent):
         super(XMLEditing, self).__init__()
@@ -35,14 +37,14 @@ class XMLEditing(xmledit.XMLEditWidget):
         self.document().contentsChange.connect(self.slot_contentsChange)
         
     def refreshFromVisual(self):
-        #element = self.parent.visual.imagesetEntry.saveToElement()
-        #xmledit.indent(element)
+        if not self.parent.visual.rootWidget:
+            return
         
-        #self.ignoreUndoCommands = True
-        # We purposefully use selectAll and insertPlainText to play well with undo redo across editing modes
-        #self.setPlainText(ElementTree.tostring(element, "utf-8"))
-        #self.ignoreUndoCommands = False
-        pass
+        source = PyCEGUI.WindowManager.getSingleton().getLayoutAsString(self.parent.visual.rootWidget)
+        
+        self.ignoreUndoCommands = True
+        self.setPlainText(source)
+        self.ignoreUndoCommands = False
         
     def propagateChangesToVisual(self):
         source = self.document().toPlainText()
@@ -54,19 +56,21 @@ class XMLEditing(xmledit.XMLEditWidget):
         
         # TODO: What if this fails to parse? Do we show a message box that it failed and allow falling back
         #       to the previous visual state or do we somehow correct the XML like editors do?
-        #element = ElementTree.fromstring(self.document().toPlainText())
-        #self.parent.visual.loadImagesetEntryFromElement(element)
-        pass
+        # we have to make the context the current context to ensure textures are fine
+        self.parent.mainWindow.ceguiWidget.makeCurrent()
+        
+        newRoot = PyCEGUI.WindowManager.getSingleton().loadLayoutFromString(source)
+        self.parent.visual.replaceRootWidget(newRoot)
     
     def showEvent(self, event):
-        #self.refreshFromVisual()
+        self.refreshFromVisual()
         
         super(XMLEditing, self).showEvent(event)
         
     def hideEvent(self, event):
         super(XMLEditing, self).hideEvent(event)
         
-        #self.propagateChangesToVisual()
+        self.propagateChangesToVisual()
     
     def slot_contentsChange(self, position, charsRemoved, charsAdded):
         #if not self.ignoreUndoCommands:

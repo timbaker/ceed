@@ -73,6 +73,7 @@ class MainWindow(QMainWindow):
         
         self.tabs = self.centralWidget().findChild(QTabWidget, "tabs")
         self.tabs.currentChanged.connect(self.slot_currentTabChanged)
+        #self.tabs.currentChanged.connect(self.slot_currentTabChanged)
         self.tabs.tabCloseRequested.connect(self.slot_tabCloseRequested)
         
         self.tabEditors = []
@@ -385,6 +386,9 @@ class MainWindow(QMainWindow):
             self.openEditorTab(file)
     
     def slot_currentTabChanged(self, index):
+        # to fight flicker
+        self.setUpdatesEnabled(False)
+        
         wdt = self.tabs.widget(index)
         
         if self.activeEditor:
@@ -418,7 +422,9 @@ class MainWindow(QMainWindow):
             self.saveAction.setEnabled(False)
             self.saveAllAction.setEnabled(False)
             self.closeAction.setEnabled(False)
-    
+            
+        self.setUpdatesEnabled(True)
+      
     def slot_tabCloseRequested(self, index):
         wdt = self.tabs.widget(index)
         editor = wdt.tabbedEditor

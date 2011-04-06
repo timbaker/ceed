@@ -39,7 +39,6 @@ class XMLEditing(xmledit.XMLEditWidget):
         xmledit.indent(element)
         
         self.ignoreUndoCommands = True
-        # We purposefully use selectAll and insertPlainText to play well with undo redo across editing modes
         self.setPlainText(ElementTree.tostring(element, "utf-8"))
         self.ignoreUndoCommands = False
         

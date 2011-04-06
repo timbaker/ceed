@@ -21,45 +21,41 @@ from PySide.QtCore import *
 
 import PyCEGUI
 
-class VisualEditing(QWidget):
+class LayoutPreviewer(QWidget):
     def __init__(self, parent):
-        super(VisualEditing, self).__init__()
+        super(LayoutPreviewer, self).__init__()
         
         self.parent = parent
         self.rootWidget = None
 
-    def initialise(self, rootWidget):
-        self.replaceRootWidget(rootWidget)
-    
-    def replaceRootWidget(self, newRoot):
-        oldRoot = self.rootWidget
-            
-        self.rootWidget = newRoot
-        PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
-    
-        if oldRoot:
-            PyCEGUI.WindowManager.getSingleton().destroyWindow(oldRoot)
-        
-        # cause full redraw to ensure nothing gets stuck
-        PyCEGUI.System.getSingleton().signalRedraw()
-    
     def showEvent(self, event):
-        super(VisualEditing, self).showEvent(event)
+        super(LayoutPreviewer, self).showEvent(event)
         
+        self.parent.mainWindow.ceguiWidget.injectInput = True
         self.parent.mainWindow.ceguiWidget.setParent(self)
         self.parent.mainWindow.ceguiWidget.setGeometry(0, 0, 1024, 768)
         self.parent.mainWindow.ceguiWidget.show()
         
+        assert(self.rootWidget == None)
+        
+        # we have to make the context the current context to ensure textures are fine
+        self.parent.mainWindow.ceguiWidget.makeCurrent()
+        
+        # lets clone so we don't affect the layout at all
+        self.rootWidget = self.parent.visual.rootWidget.clone("Preview")
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
-        #self.dockWidget.setEnabled(True)
-        #self.toolBar.setEnabled(True)
-    
+
     def hideEvent(self, event):
-        #self.dockWidget.setEnabled(False)
-        #self.toolBar.setEnabled(False)
+        if self.rootWidget:      
+            self.parent.mainWindow.ceguiWidget.injectInput = False
+            self.parent.mainWindow.ceguiWidget.hide()
+            self.parent.mainWindow.ceguiWidget.setParent(None)
+            
+            # we have to make the context the current context to ensure textures are fine
+            self.parent.mainWindow.ceguiWidget.makeCurrent()
         
-        self.parent.mainWindow.ceguiWidget.hide()
-        self.parent.mainWindow.ceguiWidget.setParent(None)
-        
-        super(VisualEditing, self).hideEvent(event)
+            PyCEGUI.WindowManager.getSingleton().destroyWindow(self.rootWidget)
+            self.rootWidget = None
+            
+        super(LayoutPreviewer, self).hideEvent(event)
     

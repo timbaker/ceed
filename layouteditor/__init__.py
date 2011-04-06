@@ -28,6 +28,7 @@ import xmledit
 
 import visual
 import xmlediting
+import preview
 
 import PyCEGUI
 
@@ -48,13 +49,18 @@ class LayoutTabbedEditor(mixedtab.MixedTabbedEditor):
         self.xml = xmlediting.XMLEditing(self)
         self.addTab(self.xml, "XML")
         
+        self.previewer = preview.LayoutPreviewer(self)
+        self.addTab(self.previewer, "Live Preview")
+        
         self.tabWidget = self
     
     def initialise(self, mainWindow):
         super(LayoutTabbedEditor, self).initialise(mainWindow)
         
+        # we have to make the context the current context to ensure textures are fine
+        self.mainWindow.ceguiWidget.makeCurrent()
         # TODO: Not the proper path handling for now!!
-        root = PyCEGUI.WindowManager.getSingleton().loadWindowLayout(os.path.basename(self.filePath), "")
+        root = PyCEGUI.WindowManager.getSingleton().loadLayoutFromFile(os.path.basename(self.filePath), "")
         self.visual.initialise(root)
     
     def finalise(self):        
