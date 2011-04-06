@@ -52,6 +52,16 @@ class ModeSwitchCommand(commands.UndoCommand):
         
         super(ModeSwitchCommand, self).redo()
 
+class EditMode(object):
+    def __init__(self):
+        pass
+    
+    def activate(self):
+        pass
+    
+    def deactivate(self):
+        pass
+
 class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
     """This class represents tabbed editor that has little tabs on the bottom
     allowing you to switch editing "modes" - visual, code, ...
@@ -94,5 +104,14 @@ class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
         if not self.ignoreCurrentChanged:
             cmd = ModeSwitchCommand(self, self.currentTabIndex, newTabIndex)
             self.undoStack.push(cmd)
+        
+        oldTab = self.widget(self.currentTabIndex)
+        newTab = self.widget(newTabIndex)
+        
+        if oldTab:
+            oldTab.deactivate()
+        
+        if newTab:
+            newTab.activate()
         
         self.currentTabIndex = newTabIndex

@@ -21,6 +21,8 @@ from PySide.QtCore import *
 
 import fnmatch
 
+import mixedtab
+
 import qtwidgets
 import elements
 import undo
@@ -293,10 +295,13 @@ class ImagesetEditorDockWidget(QDockWidget):
     def slot_offsetYChanged(self, text):
         self.metaslot_propertyChanged("yoffset", text)
 
-class VisualEditing(QGraphicsView):
+class VisualEditing(QGraphicsView, mixedtab.EditMode):
     def __init__(self, parent):
+        mixedtab.EditMode.__init__(self)
+        
         self.scene = QGraphicsScene()
-        super(VisualEditing, self).__init__(self.scene)
+        QGraphicsView.__init__(self, self.scene)
+        
         self.scene.selectionChanged.connect(self.slot_selectionChanged)
         
         self.parent = parent

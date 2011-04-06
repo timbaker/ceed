@@ -21,12 +21,14 @@ from PySide.QtCore import *
 
 from xml.etree import ElementTree
 
+import mixedtab
+
 import undo
 import xmledit
 
 import PyCEGUI
 
-class XMLEditing(xmledit.XMLEditWidget):
+class XMLEditing(xmledit.XMLEditWidget, mixedtab.EditMode):
     def __init__(self, parent):
         super(XMLEditing, self).__init__()
         
@@ -62,14 +64,10 @@ class XMLEditing(xmledit.XMLEditWidget):
         newRoot = PyCEGUI.WindowManager.getSingleton().loadLayoutFromString(source)
         self.parent.visual.replaceRootWidget(newRoot)
     
-    def showEvent(self, event):
+    def activate(self):
         self.refreshFromVisual()
         
-        super(XMLEditing, self).showEvent(event)
-        
-    def hideEvent(self, event):
-        super(XMLEditing, self).hideEvent(event)
-        
+    def deactivate(self):
         self.propagateChangesToVisual()
     
     def slot_contentsChange(self, position, charsRemoved, charsAdded):

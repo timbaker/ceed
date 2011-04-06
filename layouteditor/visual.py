@@ -19,9 +19,11 @@
 from PySide.QtGui import *
 from PySide.QtCore import *
 
+import mixedtab
+
 import PyCEGUI
 
-class VisualEditing(QWidget):
+class VisualEditing(QWidget, mixedtab.EditMode):
     def __init__(self, parent):
         super(VisualEditing, self).__init__()
         
