@@ -58,7 +58,7 @@ class LayoutTabbedEditor(mixedtab.MixedTabbedEditor):
         super(LayoutTabbedEditor, self).initialise(mainWindow)
         
         # we have to make the context the current context to ensure textures are fine
-        self.mainWindow.ceguiWidget.makeCurrent()
+        self.mainWindow.ceguiContainerWidget.makeGLContextCurrent()
         # TODO: Not the proper path handling for now!!
         root = PyCEGUI.WindowManager.getSingleton().loadLayoutFromFile(os.path.basename(self.filePath), "")
         self.visual.initialise(root)

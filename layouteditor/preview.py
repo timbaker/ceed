@@ -29,12 +29,16 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         
         self.parent = parent
         self.rootWidget = None
+        
+        layout = QVBoxLayout(self)
+        layout.setMargin(0)
+        self.setLayout(layout)
 
     def activate(self):
         assert(self.rootWidget == None)
         
         # we have to make the context the current context to ensure textures are fine
-        self.parent.mainWindow.ceguiWidget.makeCurrent()
+        self.parent.mainWindow.ceguiContainerWidget.makeGLContextCurrent()
         
         # lets clone so we don't affect the layout at all
         self.rootWidget = self.parent.visual.rootWidget.clone("Preview")
@@ -45,22 +49,19 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         self.rootWidget = None
 
     def showEvent(self, event):
-        super(LayoutPreviewer, self).showEvent(event)
-        
-        self.parent.mainWindow.ceguiWidget.injectInput = True
-        self.parent.mainWindow.ceguiWidget.setParent(self)
-        self.parent.mainWindow.ceguiWidget.setGeometry(0, 0, 1024, 768)
-        self.parent.mainWindow.ceguiWidget.show()
+        self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath)
+        self.parent.mainWindow.ceguiContainerWidget.injectInput = True
         
         if self.rootWidget:
             PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
 
-    def hideEvent(self, event):
-        if self.rootWidget:
-            self.parent.mainWindow.ceguiWidget.injectInput = False
-            self.parent.mainWindow.ceguiWidget.hide()
-            self.parent.mainWindow.ceguiWidget.setParent(None)
+        super(LayoutPreviewer, self).showEvent(event)
 
+    def hideEvent(self, event):
+        self.parent.mainWindow.ceguiContainerWidget.injectInput = False
+        self.parent.mainWindow.ceguiContainerWidget.deactivate()
+
+        if self.rootWidget:
             PyCEGUI.System.getSingleton().setGUISheet(None)
             
         super(LayoutPreviewer, self).hideEvent(event)

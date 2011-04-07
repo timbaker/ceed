@@ -51,6 +51,8 @@ class XMLEditing(xmledit.XMLEditWidget, mixedtab.EditMode):
     def propagateChangesToVisual(self):
         source = self.document().toPlainText()
         
+        print source
+        
         # for some reason, Qt calls hideEvent even though the tab widget was never shown :-/
         # in this case the source will be empty and parsing it will fail
         if source == "":

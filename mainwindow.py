@@ -62,14 +62,12 @@ class MainWindow(QMainWindow):
         self.ui.setupUi(self)
         
         # we start CEGUI early and we always start it
-        self.ceguiWidget = cegui.CEGUIWidget()
-        #self.ceguiWidget.setParent(self.centralWidget())
-        #self.ceguiWidget.show()
+        self.ceguiContainerWidget = cegui.CEGUIContainerWidget(self)
         
         # we don't show the debug widget by default
-        self.ceguiWidget.debugInfo.setVisible(False)
-        self.ceguiWidget.debugInfo.setFloating(True)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.ceguiWidget.debugInfo)
+        self.ceguiContainerWidget.debugInfo.setVisible(False)
+        self.ceguiContainerWidget.debugInfo.setFloating(True)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.ceguiContainerWidget.debugInfo)
         
         self.tabs = self.centralWidget().findChild(QTabWidget, "tabs")
         self.tabs.currentChanged.connect(self.slot_currentTabChanged)
@@ -158,8 +156,8 @@ class MainWindow(QMainWindow):
         self.findChild(QAction, "actionUndoViewerVisible").toggled.connect(self.undoViewer.setVisible)
         self.undoViewer.visibilityChanged.connect(self.findChild(QAction, "actionUndoViewerVisible").setChecked)
 
-        self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiWidget.debugInfo.setVisible)
-        self.ceguiWidget.debugInfo.visibilityChanged.connect(self.findChild(QAction, "actionCEGUIDebugInfoVisible").setChecked)
+        self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiContainerWidget.debugInfo.setVisible)
+        self.ceguiContainerWidget.debugInfo.visibilityChanged.connect(self.findChild(QAction, "actionCEGUIDebugInfoVisible").setChecked)
         
     def openProject(self, path):
         assert(not self.project)
@@ -169,7 +167,7 @@ class MainWindow(QMainWindow):
         self.projectManager.setProject(self.project)
         self.fileSystemBrowser.setDirectory(self.project.getAbsolutePathOf(""))
         # sync up the cegui instance
-        self.ceguiWidget.syncToProject(self.project)
+        self.ceguiContainerWidget.syncToProject(self.project)
         
         # project has been opened
         # enable the project management tree
@@ -362,7 +360,7 @@ class MainWindow(QMainWindow):
         
         if dialog.exec_() == QDialog.Accepted:
             dialog.apply(self.project)
-            self.ceguiWidget.syncToProject(self.project)
+            self.ceguiContainerWidget.syncToProject(self.project)
     
     def slot_newFileDialog(self):
         dir = ""
@@ -392,7 +390,7 @@ class MainWindow(QMainWindow):
     
     def slot_currentTabChanged(self, index):
         # to fight flicker
-        self.setUpdatesEnabled(False)
+        self.tabs.setUpdatesEnabled(False)
         
         wdt = self.tabs.widget(index)
         
@@ -428,8 +426,8 @@ class MainWindow(QMainWindow):
             self.saveAllAction.setEnabled(False)
             self.closeAction.setEnabled(False)
             
-        self.setUpdatesEnabled(True)
-      
+        self.tabs.setUpdatesEnabled(True)
+    
     def slot_tabCloseRequested(self, index):
         wdt = self.tabs.widget(index)
         editor = wdt.tabbedEditor

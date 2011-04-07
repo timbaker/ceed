@@ -43,7 +43,7 @@ buildOptions = dict(
         
         # hax for now
         #"C:/Python26/Lib/site-packages/PyCEGUI/CEGUIOpenGLRenderer.dll",
-    ]   
+    ]
 )
 
 setup(

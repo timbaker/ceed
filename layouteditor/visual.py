@@ -29,6 +29,10 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         
         self.parent = parent
         self.rootWidget = None
+        
+        layout = QVBoxLayout(self)
+        layout.setMargin(0)
+        self.setLayout(layout)
 
     def initialise(self, rootWidget):
         self.replaceRootWidget(rootWidget)
@@ -46,22 +50,13 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         PyCEGUI.System.getSingleton().signalRedraw()
     
     def showEvent(self, event):
-        super(VisualEditing, self).showEvent(event)
-        
-        self.parent.mainWindow.ceguiWidget.setParent(self)
-        self.parent.mainWindow.ceguiWidget.setGeometry(0, 0, 1024, 768)
-        self.parent.mainWindow.ceguiWidget.show()
-        
+        self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath)
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
-        #self.dockWidget.setEnabled(True)
-        #self.toolBar.setEnabled(True)
+
+        super(VisualEditing, self).showEvent(event)
     
-    def hideEvent(self, event):
-        #self.dockWidget.setEnabled(False)
-        #self.toolBar.setEnabled(False)
-        
-        self.parent.mainWindow.ceguiWidget.hide()
-        self.parent.mainWindow.ceguiWidget.setParent(None)
+    def hideEvent(self, event):        
+        self.parent.mainWindow.ceguiContainerWidget.deactivate()
         
         super(VisualEditing, self).hideEvent(event)
     

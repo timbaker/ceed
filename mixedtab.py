@@ -107,7 +107,7 @@ class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
         
         oldTab = self.widget(self.currentTabIndex)
         newTab = self.widget(newTabIndex)
-        
+
         if oldTab:
             oldTab.deactivate()
         

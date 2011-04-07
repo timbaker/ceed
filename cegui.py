@@ -16,8 +16,8 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-from PySide.QtCore import Qt
-from PySide.QtGui import QDockWidget, QLineEdit
+from PySide.QtCore import *
+from PySide.QtGui import *
 from PySide.QtOpenGL import *
 
 from OpenGL.GL import *
@@ -52,10 +52,10 @@ class CEGUIDebugInfo(QDockWidget):
     
     # This will allow us to view logs in Qt in the future
     
-    def __init__(self, ceguiWidget):
+    def __init__(self, ceguiContainerWidget):
         super(CEGUIDebugInfo, self).__init__()
         
-        self.ceguiWidget = ceguiWidget
+        self.ceguiContainerWidget = ceguiContainerWidget
         # update FPS and render time very second
         self.boxUpdateInterval = 1
         
@@ -99,7 +99,7 @@ class CEGUIWidget(QGLWidget):
     #       The CEGUIWidgets would basically be window rendering targets.
     
     def __init__(self):
-        super(CEGUIWidget, self).__init__(QGLContext(QGLFormat()))
+        super(CEGUIWidget, self).__init__()
         
         self.initialised = False
         self.injectInput = False
@@ -108,8 +108,6 @@ class CEGUIWidget(QGLWidget):
         # we might want key events
         self.setFocusPolicy(Qt.ClickFocus)
         
-        self.debugInfo = CEGUIDebugInfo(self)
-        #self.logger = CEGUIQtLogger(self.debugInfo)
         self.glInit()
     
     def __del__(self):
@@ -148,6 +146,8 @@ class CEGUIWidget(QGLWidget):
             parser.setProperty("SchemaDefaultResourceGroup", "schemas")
             
     def syncToProject(self, project):
+        self.makeCurrent()
+        
         # destroy all previous resources (if any)
         PyCEGUI.ImageManager.getSingleton().destroyAll()
         PyCEGUI.FontManager.getSingleton().destroyAll()
@@ -205,7 +205,8 @@ class CEGUIWidget(QGLWidget):
             self.initialised = True
         
         self.lastRenderTime = time.time()
-        self.lastBoxUpdateTime = time.time() - self.debugInfo.boxUpdateInterval
+        #self.lastBoxUpdateTime = time.time() - self.debugInfo.boxUpdateInterval
+        self.lastBoxUpdateTime = time.time()
         
     def resizeGL(self, width, height):
         self.system.notifyDisplaySizeChanged(PyCEGUI.Sizef(width, height))
@@ -232,11 +233,11 @@ class CEGUIWidget(QGLWidget):
         
         self.lastRenderTime = afterRenderTime
         
-        if afterRenderTime - self.lastBoxUpdateTime >= self.debugInfo.boxUpdateInterval:
-            self.lastBoxUpdateTime = afterRenderTime
+        #if afterRenderTime - self.lastBoxUpdateTime >= self.debugInfo.boxUpdateInterval:
+        #    self.lastBoxUpdateTime = afterRenderTime
         
-            self.debugInfo.currentRenderTimeBox.setText(str(renderTime))
-            self.debugInfo.currentFPSBox.setText(str(1.0 / fpsInverse))
+            #self.debugInfo.currentRenderTimeBox.setText(str(renderTime))
+            #self.debugInfo.currentFPSBox.setText(str(1.0 / fpsInverse))
         
         # immediately after rendering, we mark the contents as dirty to force Qt to update this
         # as much as possible
@@ -511,4 +512,97 @@ class CEGUIWidget(QGLWidget):
                 
         if not handled:
             super(CEGUIWidget, self).keyPressEvent(event)
+
+# we import here to avoid circular dependencies (CEGUIWidget has to be defined at this point)
+import ui.ceguicontainerwidget
+
+class CEGUIContainerWidget(QWidget):
+    injectInput = property(lambda self: self.ceguiWidget.injectInput,
+                           lambda self, value: setattr(self.ceguiWidget, "injectInput", value))
     
+    def __init__(self, mainWindow):
+        super(CEGUIContainerWidget, self).__init__()
+        
+        self.ui = ui.ceguicontainerwidget.Ui_CEGUIContainerWidget()
+        self.ui.setupUi(self)
+        
+        self.currentParentWidget = None
+        
+        self.debugInfo = CEGUIDebugInfo(self)
+        self.ceguiWidget = self.findChild(CEGUIWidget, "ceguiWidget")
+        
+        self.scrollArea = self.findChild(QScrollArea, "scrollArea")
+        
+        self.autoExpand = self.findChild(QCheckBox, "autoExpand")
+        self.autoExpand.stateChanged.connect(self.slot_autoExpandChanged)
+        self.resolutionBox = self.findChild(QComboBox, "resolutionBox")
+        self.resolutionBox.editTextChanged.connect(self.slot_resolutionBoxChanged)
+        
+    def syncToProject(self, project):
+        self.ceguiWidget.syncToProject(project)
+    
+    def makeGLContextCurrent(self):
+        self.ceguiWidget.makeCurrent()
+        
+    def activate(self, parentWidget, resourceIdentifier):
+        """Activates the CEGUI Widget for the given parentWidget (QWidget derived class).
+        resourceIdentifier is usually absolute path of the file and is used to differentiate
+        resolution settings
+        """
+        
+        assert(self.currentParentWidget == None)
+        self.currentParentWidget = parentWidget
+        
+        self.currentParentWidget.setUpdatesEnabled(False)
+        if self.currentParentWidget.layout():
+            self.currentParentWidget.layout().addWidget(self)
+        else:
+            self.setParent(self.currentParentWidget)
+        self.currentParentWidget.setUpdatesEnabled(True)
+        
+    def deactivate(self):
+        if self.currentParentWidget == None:
+            return
+        
+        self.currentParentWidget.setUpdatesEnabled(False)
+        if self.currentParentWidget.layout():
+            self.currentParentWidget.layout().removeWidget(self)
+        else:
+            self.setParentWidget(None)
+        self.currentParentWidget.setUpdatesEnabled(True)
+            
+        self.currentParentWidget = None
+        
+    def slot_autoExpandChanged(self, expand):
+        if expand == Qt.Checked:
+            self.scrollArea.setWidgetResizable(True)
+            self.ceguiWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        else:
+            self.scrollArea.setWidgetResizable(False)
+            self.ceguiWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            # set the currently preferred size
+            self.slot_resolutionBoxChanged(self.resolutionBox.currentText())
+        
+    def slot_resolutionBoxChanged(self, text):
+        print text
+        
+        if text == "Project Default":
+            # special case
+            pass
+        else:
+            res = text.split("x", 1)
+            if len(res) == 2:
+                try:
+                    width = int(res[0])
+                    height = int(res[1])
+                    
+                    if width < 1:
+                        width = 1
+                    if height < 1:
+                        height = 1
+                    
+                    self.ceguiWidget.setGeometry(0, 0, width, height)
+                    
+                except:
+                    # ignore invalid literals
+                    pass
