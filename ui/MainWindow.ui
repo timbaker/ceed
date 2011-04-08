@@ -318,6 +318,9 @@
    <property name="text">
     <string>New file</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
   </action>
   <action name="actionOpenFile">
    <property name="icon">
@@ -326,6 +329,9 @@
    </property>
    <property name="text">
     <string>Open file</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
    </property>
   </action>
   <action name="actionUndoViewerVisible">
