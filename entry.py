@@ -20,7 +20,7 @@ import sys
 import os
 
 from PySide.QtCore import Qt, QTimer, QPoint
-from PySide.QtGui import QApplication, QSplashScreen, QPixmap
+from PySide.QtGui import QApplication, QSplashScreen, QPixmap, QMessageBox
 
 import compileuifiles
 
@@ -85,30 +85,42 @@ class SplashScreen(QSplashScreen):
         self.move(self.pos() + QPoint(0, 1))
         self.update()
 
+class Application(QApplication):
+    def __init__(self, argv):
+        super(Application, self).__init__(argv)
+        
+        # first recompile all UI files to ensure they are up to date
+        compileuifiles.compileUIFiles("./ui")
+        compileuifiles.compileUIFiles("./ui/imageseteditor")
+        compileuifiles.compileUIFiles("./ui/widgets")
+        
+        self.mainwindow = None
+        
+        self.setOrganizationName("CEGUI")
+        self.setOrganizationDomain("cegui.org.uk")
+        self.setApplicationName("CEED - CEGUI editor")
+        self.setApplicationVersion("0.1 - WIP")
+        
+        self.splash = SplashScreen()
+        self.splash.show()
+        
+        # import mainwindow after UI files have been recompiled
+        import mainwindow
+        
+        self.mainWindow = mainwindow.MainWindow(self)
+        self.mainWindow.showMaximized()
+        
+        # import error after UI files have been recompiled
+        import error
+        self.errorHandler = error.ErrorHandler(self.mainWindow)
+        self.errorHandler.installExceptionHook()
+
 def main():
     fixCwd()
     
-    # first recompile all UI files to ensure they are up to date
-    compileuifiles.compileUIFiles("./ui")
-    compileuifiles.compileUIFiles("./ui/imageseteditor")
-    compileuifiles.compileUIFiles("./ui/widgets")
-
-    # import mainwindow after UI files have been recompiled
-    import mainwindow
+    app = Application(sys.argv)
     
-    app = QApplication(sys.argv)
-    app.setOrganizationName("CEGUI")
-    app.setOrganizationDomain("cegui.org.uk")
-    app.setApplicationName("CEED - CEGUI editor")
-    app.setApplicationVersion("0.1 - WIP")
-    
-    splash = SplashScreen()
-    splash.show()
-    
-    wnd = mainwindow.MainWindow(app)
-    wnd.showMaximized()
-    
-    app.exec_()
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()

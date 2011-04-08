@@ -62,12 +62,7 @@ class MainWindow(QMainWindow):
         self.ui.setupUi(self)
         
         # we start CEGUI early and we always start it
-        self.ceguiContainerWidget = cegui.CEGUIContainerWidget(self)
-        
-        # we don't show the debug widget by default
-        self.ceguiContainerWidget.debugInfo.setVisible(False)
-        self.ceguiContainerWidget.debugInfo.setFloating(True)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.ceguiContainerWidget.debugInfo)
+        self.ceguiContainerWidget = cegui.ContainerWidget(self)
         
         self.tabs = self.centralWidget().findChild(QTabWidget, "tabs")
         self.tabs.currentChanged.connect(self.slot_currentTabChanged)
@@ -156,9 +151,6 @@ class MainWindow(QMainWindow):
         self.findChild(QAction, "actionUndoViewerVisible").toggled.connect(self.undoViewer.setVisible)
         self.undoViewer.visibilityChanged.connect(self.findChild(QAction, "actionUndoViewerVisible").setChecked)
 
-        self.findChild(QAction, "actionCEGUIDebugInfoVisible").toggled.connect(self.ceguiContainerWidget.debugInfo.setVisible)
-        self.ceguiContainerWidget.debugInfo.visibilityChanged.connect(self.findChild(QAction, "actionCEGUIDebugInfoVisible").setChecked)
-        
     def openProject(self, path):
         assert(not self.project)
         

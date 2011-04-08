@@ -41,7 +41,7 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         self.parent.mainWindow.ceguiContainerWidget.makeGLContextCurrent()
         
         # lets clone so we don't affect the layout at all
-        self.rootWidget = self.parent.visual.rootWidget.clone("Preview")
+        self.rootWidget = self.parent.visual.rootWidget.clone()
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
         
     def deactivate(self):
@@ -50,7 +50,7 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
 
     def showEvent(self, event):
         self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath)
-        self.parent.mainWindow.ceguiContainerWidget.injectInput = True
+        self.parent.mainWindow.ceguiContainerWidget.enableInput()
         
         if self.rootWidget:
             PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
@@ -58,8 +58,10 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         super(LayoutPreviewer, self).showEvent(event)
 
     def hideEvent(self, event):
-        self.parent.mainWindow.ceguiContainerWidget.injectInput = False
-        self.parent.mainWindow.ceguiContainerWidget.deactivate()
+        # this is sometimes called even before the parent is initialised
+        if hasattr(self.parent, "mainWindow"):
+            self.parent.mainWindow.ceguiContainerWidget.disableInput()
+            self.parent.mainWindow.ceguiContainerWidget.deactivate()
 
         if self.rootWidget:
             PyCEGUI.System.getSingleton().setGUISheet(None)

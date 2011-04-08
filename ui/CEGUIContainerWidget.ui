@@ -22,13 +22,16 @@
    </property>
    <item>
     <widget class="QScrollArea" name="scrollArea">
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
      </property>
      <property name="widgetResizable">
       <bool>false</bool>
      </property>
-     <widget class="CEGUIWidget" name="ceguiWidget">
+     <widget class="RenderWidget" name="renderWidget">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -42,6 +45,9 @@
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
       </property>
      </widget>
     </widget>
@@ -67,6 +73,23 @@
       <property name="bottomMargin">
        <number>0</number>
       </property>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <pointsize>6</pointsize>
+          <italic>true</italic>
+          <kerning>true</kerning>
+         </font>
+        </property>
+        <property name="text">
+         <string>Embedded CEGUI</string>
+        </property>
+        <property name="margin">
+         <number>6</number>
+        </property>
+       </widget>
+      </item>
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
@@ -119,6 +142,26 @@
         </item>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="debugInfoButton">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>icons/cegui/debug_info.png</normaloff>icons/cegui/debug_info.png</iconset>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
+        <property name="default">
+         <bool>false</bool>
+        </property>
+        <property name="flat">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
@@ -126,7 +169,7 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>CEGUIWidget</class>
+   <class>RenderWidget</class>
    <extends>QWidget</extends>
    <header>cegui</header>
    <container>1</container>

@@ -30,32 +30,35 @@ import time
 import PyCEGUI
 import PyCEGUIOpenGLRenderer
 
-class CEGUIQtLogger(PyCEGUI.Logger):
-    """Redirects CEGUI log info to CEGUIWidgetInfo"""
+#class CEGUIQtLogger(PyCEGUI.Logger):
+#    """Redirects CEGUI log info to CEGUIWidgetInfo"""
+#
+#    # This is a separate class from CEGUIWidgetInfo because PySide and PyCEGUI
+#    # don't like mixing base classes at all
+#    
+#    def __init__(self, widgetInfo):
+#        super(CEGUIQtLogger, self).__init__()
+#        
+#        self.widgetInfo = widgetInfo
+#        
+#    def logEvent(self, message, level):
+#        self.widgetInfo.logEvent(message, level)
+#        
+#    def setLogFilename(self, name, append):
+#        pass
 
-    # This is a separate class from CEGUIWidgetInfo because PySide and PyCEGUI
-    # don't like mixing base classes at all
-    
-    def __init__(self, widgetInfo):
-        super(CEGUIQtLogger, self).__init__()
-        
-        self.widgetInfo = widgetInfo
-        
-    def logEvent(self, message, level):
-        self.widgetInfo.logEvent(message, level)
-        
-    def setLogFilename(self, name, append):
-        pass
-
-class CEGUIDebugInfo(QDockWidget):
+class DebugInfo(QDockWidget):
     """A debugging/info widget about the embedded CEGUI instance"""
     
     # This will allow us to view logs in Qt in the future
     
-    def __init__(self, ceguiContainerWidget):
-        super(CEGUIDebugInfo, self).__init__()
+    def __init__(self, containerWidget, mainWindow):
+        super(DebugInfo, self).__init__(mainWindow)
         
-        self.ceguiContainerWidget = ceguiContainerWidget
+        self.setFloating(True)
+        self.setVisible(False)
+        
+        self.containerWidget = containerWidget
         # update FPS and render time very second
         self.boxUpdateInterval = 1
         
@@ -88,7 +91,7 @@ class CEGUIDebugInfo(QDockWidget):
         
         print message.c_str()
 
-class CEGUIWidget(QGLWidget):
+class RenderWidget(QGLWidget):
     """Widget containing and displaying a CEGUI instance via OpenGL"""
     
     # !!! You can only spawn one instance of this widget! You have to reuse the one
@@ -99,7 +102,7 @@ class CEGUIWidget(QGLWidget):
     #       The CEGUIWidgets would basically be window rendering targets.
     
     def __init__(self):
-        super(CEGUIWidget, self).__init__()
+        super(RenderWidget, self).__init__()
         
         self.initialised = False
         self.injectInput = False
@@ -113,7 +116,7 @@ class CEGUIWidget(QGLWidget):
     def __del__(self):
         #PyCEGUIOpenGLRenderer.OpenGLRenderer.destroySystem()
         pass
-    
+
     def setResourceGroupDirectory(self, resourceGroup, absolutePath):
         rp = PyCEGUI.System.getSingleton().getResourceProvider()
  
@@ -253,7 +256,7 @@ class CEGUIWidget(QGLWidget):
             handled = PyCEGUI.System.getSingleton().injectMousePosition(event.x(), event.y())
         
         if not handled:    
-            super(CEGUIWidget, self).mouseMoveEvent(event)
+            super(RenderWidget, self).mouseMoveEvent(event)
         
     def translateQtMouseButton(self, button):
         ret = None
@@ -275,7 +278,7 @@ class CEGUIWidget(QGLWidget):
                 handled = PyCEGUI.System.getSingleton().injectMouseButtonDown(button)
                 
         if not handled:
-            super(CEGUIWidget, self).mousePressEvent(event)
+            super(RenderWidget, self).mousePressEvent(event)
                 
     def mouseReleaseEvent(self, event):
         handled = False
@@ -287,7 +290,7 @@ class CEGUIWidget(QGLWidget):
                 handled = PyCEGUI.System.getSingleton().injectMouseButtonUp(button)
                 
         if not handled:
-            super(CEGUIWidget, self).mouseReleaseEvent(event)
+            super(RenderWidget, self).mouseReleaseEvent(event)
     
     def translateQtKeyboardButton(self, button):
         # Shame this isn't standardised :-/ Was a pain to write down
@@ -499,7 +502,7 @@ class CEGUIWidget(QGLWidget):
                 handled = handled or PyCEGUI.System.getSingleton().injectChar(ord(char[0]))
                 
         if not handled:
-            super(CEGUIWidget, self).keyPressEvent(event)
+            super(RenderWidget, self).keyPressEvent(event)
     
     def keyReleaseEvent(self, event):
         handled = False
@@ -511,25 +514,22 @@ class CEGUIWidget(QGLWidget):
                 handled = PyCEGUI.System.getSingleton().injectKeyUp(button)
                 
         if not handled:
-            super(CEGUIWidget, self).keyPressEvent(event)
+            super(RenderWidget, self).keyPressEvent(event)
 
 # we import here to avoid circular dependencies (CEGUIWidget has to be defined at this point)
 import ui.ceguicontainerwidget
 
-class CEGUIContainerWidget(QWidget):
-    injectInput = property(lambda self: self.ceguiWidget.injectInput,
-                           lambda self, value: setattr(self.ceguiWidget, "injectInput", value))
-    
+class ContainerWidget(QWidget):
     def __init__(self, mainWindow):
-        super(CEGUIContainerWidget, self).__init__()
+        super(ContainerWidget, self).__init__()
         
         self.ui = ui.ceguicontainerwidget.Ui_CEGUIContainerWidget()
         self.ui.setupUi(self)
         
         self.currentParentWidget = None
         
-        self.debugInfo = CEGUIDebugInfo(self)
-        self.ceguiWidget = self.findChild(CEGUIWidget, "ceguiWidget")
+        self.debugInfo = DebugInfo(self, mainWindow)
+        self.renderWidget = self.findChild(RenderWidget, "renderWidget")
         
         self.scrollArea = self.findChild(QScrollArea, "scrollArea")
         
@@ -538,11 +538,20 @@ class CEGUIContainerWidget(QWidget):
         self.resolutionBox = self.findChild(QComboBox, "resolutionBox")
         self.resolutionBox.editTextChanged.connect(self.slot_resolutionBoxChanged)
         
+        self.debugInfoButton = self.findChild(QPushButton, "debugInfoButton")
+        self.debugInfoButton.clicked.connect(self.slot_debugInfoButton)
+    
+    def enableInput(self):
+        self.renderWidget.injectInput = True
+        
+    def disableInput(self):
+        self.renderWidget.injectInput = False
+        
     def syncToProject(self, project):
-        self.ceguiWidget.syncToProject(project)
+        self.renderWidget.syncToProject(project)
     
     def makeGLContextCurrent(self):
-        self.ceguiWidget.makeCurrent()
+        self.renderWidget.makeCurrent()
         
     def activate(self, parentWidget, resourceIdentifier):
         """Activates the CEGUI Widget for the given parentWidget (QWidget derived class).
@@ -576,16 +585,14 @@ class CEGUIContainerWidget(QWidget):
     def slot_autoExpandChanged(self, expand):
         if expand == Qt.Checked:
             self.scrollArea.setWidgetResizable(True)
-            self.ceguiWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.renderWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         else:
             self.scrollArea.setWidgetResizable(False)
-            self.ceguiWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            self.renderWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             # set the currently preferred size
             self.slot_resolutionBoxChanged(self.resolutionBox.currentText())
         
     def slot_resolutionBoxChanged(self, text):
-        print text
-        
         if text == "Project Default":
             # special case
             pass
@@ -601,8 +608,11 @@ class CEGUIContainerWidget(QWidget):
                     if height < 1:
                         height = 1
                     
-                    self.ceguiWidget.setGeometry(0, 0, width, height)
+                    self.renderWidget.setGeometry(0, 0, width, height)
                     
                 except:
                     # ignore invalid literals
                     pass
+
+    def slot_debugInfoButton(self):
+        self.debugInfo.show()

@@ -113,7 +113,6 @@
     <addaction name="actionFileSystemBrowserVisible"/>
     <addaction name="actionUndoViewerVisible"/>
     <addaction name="separator"/>
-    <addaction name="actionCEGUIDebugInfoVisible"/>
    </widget>
    <widget class="QMenu" name="menuProject">
     <property name="title">
@@ -292,14 +291,6 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+B</string>
-   </property>
-  </action>
-  <action name="actionCEGUIDebugInfoVisible">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>CEGUI Debug Info</string>
    </property>
   </action>
   <action name="actionProjectSettings">

@@ -51,8 +51,6 @@ class XMLEditing(xmledit.XMLEditWidget, mixedtab.EditMode):
     def propagateChangesToVisual(self):
         source = self.document().toPlainText()
         
-        print source
-        
         # for some reason, Qt calls hideEvent even though the tab widget was never shown :-/
         # in this case the source will be empty and parsing it will fail
         if source == "":
@@ -61,7 +59,7 @@ class XMLEditing(xmledit.XMLEditWidget, mixedtab.EditMode):
         # TODO: What if this fails to parse? Do we show a message box that it failed and allow falling back
         #       to the previous visual state or do we somehow correct the XML like editors do?
         # we have to make the context the current context to ensure textures are fine
-        self.parent.mainWindow.ceguiWidget.makeCurrent()
+        self.parent.mainWindow.ceguiContainerWidget.makeGLContextCurrent()
         
         newRoot = PyCEGUI.WindowManager.getSingleton().loadLayoutFromString(source)
         self.parent.visual.replaceRootWidget(newRoot)
