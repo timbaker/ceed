@@ -51,7 +51,7 @@ class VisualEditing(QWidget, mixedtab.EditMode):
     
     def showEvent(self, event):
         self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath)
-        
+
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
 
         super(VisualEditing, self).showEvent(event)

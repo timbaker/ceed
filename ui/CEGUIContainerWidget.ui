@@ -22,22 +22,16 @@
    </property>
    <item>
     <widget class="QScrollArea" name="scrollArea">
-     <property name="styleSheet">
-      <string notr="true"/>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::NoFrame</enum>
-     </property>
      <property name="widgetResizable">
       <bool>false</bool>
      </property>
-     <widget class="RenderWidget" name="renderWidget">
+     <widget class="GraphicsView" name="view">
       <property name="geometry">
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>752</width>
-        <height>663</height>
+        <width>750</width>
+        <height>657</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -46,8 +40,8 @@
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
-      <property name="autoFillBackground">
-       <bool>false</bool>
+      <property name="viewportUpdateMode">
+       <enum>QGraphicsView::MinimalViewportUpdate</enum>
       </property>
      </widget>
     </widget>
@@ -169,10 +163,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>RenderWidget</class>
-   <extends>QWidget</extends>
+   <class>GraphicsView</class>
+   <extends>QGraphicsView</extends>
    <header>cegui</header>
-   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -18,6 +18,7 @@
 
 from PySide.QtGui import *
 from PySide.QtCore import *
+from PySide.QtOpenGL import QGLWidget
 
 import fnmatch
 
@@ -301,6 +302,11 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
         
         self.scene = QGraphicsScene()
         QGraphicsView.__init__(self, self.scene)
+        
+        # use OpenGL for view redrawing
+        # this has slightly better (and consistent) performance when it comes to lots of images
+        self.setViewport(QGLWidget());
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate);
         
         self.scene.selectionChanged.connect(self.slot_selectionChanged)
         

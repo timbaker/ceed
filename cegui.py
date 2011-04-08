@@ -91,163 +91,95 @@ class DebugInfo(QDockWidget):
         
         print message.c_str()
 
-class RenderWidget(QGLWidget):
-    """Widget containing and displaying a CEGUI instance via OpenGL"""
+class GraphicsScene(QGraphicsScene):
+    """A scene that draws CEGUI as it's background.
     
-    # !!! You can only spawn one instance of this widget! You have to reuse the one
-    #     you spawned before because we can't run multiple CEGUI instances
-    #
-    # TODO: We could theoretically split this into CEGUIInstance and CEGUIWidget and
-    #       the CEGUI widgets would use the instance's textures and other data.
-    #       The CEGUIWidgets would basically be window rendering targets.
+    Subclass this to be able to show Qt graphics items and widgets
+    on top of the embedded CEGUI widget!
+    
+    Interaction is also supported
+    """
     
     def __init__(self):
-        super(RenderWidget, self).__init__()
+        super(GraphicsScene, self).__init__()
         
-        self.initialised = False
-        self.injectInput = False
-        # we might want mouse events
-        self.setMouseTracking(True)
-        # we might want key events
-        self.setFocusPolicy(Qt.ClickFocus)
+    def drawBackground(self, painter, rect):
+        """We override this and draw CEGUI instead of the whole background.
         
-        self.glInit()
-    
-    def __del__(self):
-        #PyCEGUIOpenGLRenderer.OpenGLRenderer.destroySystem()
-        pass
-
-    def setResourceGroupDirectory(self, resourceGroup, absolutePath):
-        rp = PyCEGUI.System.getSingleton().getResourceProvider()
- 
-        rp.setResourceGroupDirectory(resourceGroup, absolutePath)
-    
-    def setDefaultResourceGroups(self):
-        # reasonable default directories
-        defaultBaseDirectory = os.path.join(os.path.curdir, "datafiles")
+        Things to keep in mind: CEGUI sets it's own matrices so the view and scene size
+        have to be exactly the same (in other words, QGraphicsView scrolling facilities
+        won't work).
         
-        self.setResourceGroupDirectory("imagesets",
-                                       os.path.join(defaultBaseDirectory, "imagesets"))
-        self.setResourceGroupDirectory("fonts",
-                                       os.path.join(defaultBaseDirectory, "fonts"))
-        self.setResourceGroupDirectory("schemes",
-                                       os.path.join(defaultBaseDirectory, "schemes"))
-        self.setResourceGroupDirectory("looknfeels",
-                                       os.path.join(defaultBaseDirectory, "looknfeel"))
-        self.setResourceGroupDirectory("layouts",
-                                       os.path.join(defaultBaseDirectory, "layouts"))
+        The best way to work this around is to have a QScrollView and QGraphicsView inside
+        it. This wraps the whole thing and scrolling works perfectly for the cost of some
+        slight flicker.
+        """
         
-        # all this will never be set to anything else again
-        PyCEGUI.ImageManager.setImagesetDefaultResourceGroup("imagesets")
-        PyCEGUI.Font.setDefaultResourceGroup("fonts")
-        PyCEGUI.Scheme.setDefaultResourceGroup("schemes")
-        PyCEGUI.WidgetLookManager.setDefaultResourceGroup("looknfeels")
-        PyCEGUI.WindowManager.setDefaultResourceGroup("layouts")
+        # ensure we don't mess with the painter
+        painter.save()
         
-        parser = self.system.getXMLParser()
-        if parser.isPropertyPresent("SchemaDefaultResourceGroup"):
-            parser.setProperty("SchemaDefaultResourceGroup", "schemas")
+        containerWidget = self.views()[0].containerWidget
+        containerWidget.ensureCEGUIIsInitialised()
             
-    def syncToProject(self, project):
-        self.makeCurrent()
-        
-        # destroy all previous resources (if any)
-        PyCEGUI.ImageManager.getSingleton().destroyAll()
-        PyCEGUI.FontManager.getSingleton().destroyAll()
-        PyCEGUI.SchemeManager.getSingleton().destroyAll()
-        #PyCEGUI.WidgetLookManager.getSingleton().destroyAll()
-        PyCEGUI.WindowManager.getSingleton().destroyAllWindows()
-        
-        self.setResourceGroupDirectory("imagesets", project.getAbsolutePathOf(project.imagesetsPath))
-        self.setResourceGroupDirectory("fonts", project.getAbsolutePathOf(project.fontsPath))
-        self.setResourceGroupDirectory("schemes", project.getAbsolutePathOf(project.schemesPath))
-        self.setResourceGroupDirectory("looknfeels", project.getAbsolutePathOf(project.looknfeelsPath))
-        self.setResourceGroupDirectory("layouts", project.getAbsolutePathOf(project.layoutsPath))
-        
-        self.createAllSchemes()
-        
-    def createAllSchemes(self):
-        # I think just creating the schemes should be alright, schemes will
-        # case other resources to be loaded as well
-        PyCEGUI.SchemeManager.getSingleton().createAll("*.scheme", "schemes")
-    
-    def getAvailableSkins(self):
-        skins = []
-
-        i = PyCEGUI.WindowFactoryManager.getSingleton().getFalagardMappingIterator()
-
-        while not i.isAtEnd():
-            current_skin = i.getCurrentValue().d_windowType.split('/')[0]
-            if current_skin not in skins:
-                skins.append(current_skin)
-
-            i.next()
-
-        skins.sort()
-
-        return skins
-    
-    def getAvailableFonts(self):
-        fonts = []
-        font_iter = PyCEGUI.FontManager.getSingleton().getIterator()
-        while not font_iter.isAtEnd():
-            fonts.append(font_iter.getCurrentValue().getName())
-            font_iter.next()
-
-        fonts.sort()
-
-        return fonts
-        
-    def initializeGL(self):
-        if not self.initialised:
-            self.renderer = PyCEGUIOpenGLRenderer.OpenGLRenderer.bootstrapSystem()
-            self.system = PyCEGUI.System.getSingleton()
-            
-            self.setDefaultResourceGroups()
-            
-            self.initialised = True
-        
-        self.lastRenderTime = time.time()
-        #self.lastBoxUpdateTime = time.time() - self.debugInfo.boxUpdateInterval
-        self.lastBoxUpdateTime = time.time()
-        
-    def resizeGL(self, width, height):
-        self.system.notifyDisplaySizeChanged(PyCEGUI.Sizef(width, height))
-    
-    def paintGL(self):
-        renderStartTime = time.time()
-        
         glClearColor(0, 0, 0, 1)
         glClear(GL_COLOR_BUFFER_BIT)
 
         # signalRedraw is called to work around potential issues with dangling
         # references in the rendering code for some versions of CEGUI.
-        self.system.signalRedraw()
-        self.system.renderGUI()
+        system = PyCEGUI.System.getSingleton()
+        system.signalRedraw()
+        system.renderGUI()
         
-        afterRenderTime = time.time()
-        renderTime = afterRenderTime - renderStartTime
+        # TODO: Fake time impulse for now
+        system.injectTimePulse(1)
         
-        fpsInverse = afterRenderTime - self.lastRenderTime
-        if fpsInverse <= 0:
-            fpsInverse = 1
+        # restore the painter in it's initial condition
+        painter.restore()
+        
+        # 20 msec after rendering is finished, we mark this as dirty to force a rerender
+        # this seems to be a good compromise
+        QTimer.singleShot(20, self.update)
 
-        self.system.injectTimePulse(fpsInverse)
+class GraphicsView(QGraphicsView):
+    """This is a final class, not suitable for subclassing. This views given scene
+    using QGLWidget. It's designed to work with cegui.GraphicsScene derived classes.
+    
+    """
+    
+    def __init__(self):
+        super(GraphicsView, self).__init__()
         
-        self.lastRenderTime = afterRenderTime
+        # we use Qt designer to put this together so we will set it later, not via constructor
+        self.containerWidget = None
         
-        #if afterRenderTime - self.lastBoxUpdateTime >= self.debugInfo.boxUpdateInterval:
-        #    self.lastBoxUpdateTime = afterRenderTime
+        self.setViewport(QGLWidget())
+        # OpenGL doesn't do partial redraws (it isn't practical anyways)
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         
-            #self.debugInfo.currentRenderTimeBox.setText(str(renderTime))
-            #self.debugInfo.currentFPSBox.setText(str(1.0 / fpsInverse))
+        self.injectInput = False
+        # we might want mouse events
+        self.setMouseTracking(True)
+        # we might want key events
+        self.setFocusPolicy(Qt.ClickFocus)
+    
+    def setScene(self, scene):
+        # overridden to make sure scene's size is always kept in sync with view's size
         
-        # immediately after rendering, we mark the contents as dirty to force Qt to update this
-        # as much as possible
-        #
-        # TODO: This will strain the CPU and GPU for no good reason, we might want to cap the FPS
-        #       or something like that
-        self.update()
+        super(GraphicsView, self).setScene(scene)
+        
+        if scene:
+            self.scene().setSceneRect(QRect(QPoint(0, 0), self.size()))
+
+    def resizeEvent(self, event):
+        # overridden to make sure scene's size is always kept in sync with view's size
+
+        if self.scene():
+            self.scene().setSceneRect(QRect(QPoint(0, 0), event.size()))
+        
+            if self.containerWidget.CEGUIInitialised:
+                PyCEGUI.System.getSingleton().notifyDisplaySizeChanged(PyCEGUI.Sizef(event.size().width(), event.size().height()))
+                
+        super(GraphicsView, self).resizeEvent(event)
     
     def mouseMoveEvent(self, event):
         handled = False
@@ -256,7 +188,7 @@ class RenderWidget(QGLWidget):
             handled = PyCEGUI.System.getSingleton().injectMousePosition(event.x(), event.y())
         
         if not handled:    
-            super(RenderWidget, self).mouseMoveEvent(event)
+            super(GraphicsView, self).mouseMoveEvent(event)
         
     def translateQtMouseButton(self, button):
         ret = None
@@ -278,7 +210,7 @@ class RenderWidget(QGLWidget):
                 handled = PyCEGUI.System.getSingleton().injectMouseButtonDown(button)
                 
         if not handled:
-            super(RenderWidget, self).mousePressEvent(event)
+            super(GraphicsView, self).mousePressEvent(event)
                 
     def mouseReleaseEvent(self, event):
         handled = False
@@ -290,7 +222,7 @@ class RenderWidget(QGLWidget):
                 handled = PyCEGUI.System.getSingleton().injectMouseButtonUp(button)
                 
         if not handled:
-            super(RenderWidget, self).mouseReleaseEvent(event)
+            super(GraphicsView, self).mouseReleaseEvent(event)
     
     def translateQtKeyboardButton(self, button):
         # Shame this isn't standardised :-/ Was a pain to write down
@@ -502,7 +434,7 @@ class RenderWidget(QGLWidget):
                 handled = handled or PyCEGUI.System.getSingleton().injectChar(ord(char[0]))
                 
         if not handled:
-            super(RenderWidget, self).keyPressEvent(event)
+            super(GraphicsView, self).keyPressEvent(event)
     
     def keyReleaseEvent(self, event):
         handled = False
@@ -514,22 +446,32 @@ class RenderWidget(QGLWidget):
                 handled = PyCEGUI.System.getSingleton().injectKeyUp(button)
                 
         if not handled:
-            super(RenderWidget, self).keyPressEvent(event)
+            super(GraphicsView, self).keyPressEvent(event)
 
-# we import here to avoid circular dependencies (CEGUIWidget has to be defined at this point)
+# we import here to avoid circular dependencies (GraphicsView has to be defined at this point)
 import ui.ceguicontainerwidget
 
 class ContainerWidget(QWidget):
+    """
+    This widget is what you should use (alongside your GraphicsScene derived class) to
+    put CEGUI inside parts of the editor.
+    
+    Provides resolution changes, auto expanding and debug widget
+    """
+    
     def __init__(self, mainWindow):
         super(ContainerWidget, self).__init__()
+        
+        self.CEGUIInitialised = False
         
         self.ui = ui.ceguicontainerwidget.Ui_CEGUIContainerWidget()
         self.ui.setupUi(self)
         
         self.currentParentWidget = None
-        
+
         self.debugInfo = DebugInfo(self, mainWindow)
-        self.renderWidget = self.findChild(RenderWidget, "renderWidget")
+        self.view = self.findChild(GraphicsView, "view")
+        self.view.containerWidget = self
         
         self.scrollArea = self.findChild(QScrollArea, "scrollArea")
         
@@ -541,19 +483,111 @@ class ContainerWidget(QWidget):
         self.debugInfoButton = self.findChild(QPushButton, "debugInfoButton")
         self.debugInfoButton.clicked.connect(self.slot_debugInfoButton)
     
+    def ensureCEGUIIsInitialised(self):
+        if not self.CEGUIInitialised:
+            self.makeGLContextCurrent()
+            
+            PyCEGUIOpenGLRenderer.OpenGLRenderer.bootstrapSystem()
+            self.CEGUIInitialised = True
+
+            self.setDefaultResourceGroups()
+    
     def enableInput(self):
-        self.renderWidget.injectInput = True
+        self.view.injectInput = True
         
     def disableInput(self):
-        self.renderWidget.injectInput = False
+        self.view.injectInput = False
+         
+    def setResourceGroupDirectory(self, resourceGroup, absolutePath):
+        self.ensureCEGUIIsInitialised()
+        
+        rp = PyCEGUI.System.getSingleton().getResourceProvider()
+ 
+        rp.setResourceGroupDirectory(resourceGroup, absolutePath)
+    
+    def setDefaultResourceGroups(self):
+        self.ensureCEGUIIsInitialised()
+        
+        # reasonable default directories
+        defaultBaseDirectory = os.path.join(os.path.curdir, "datafiles")
+        
+        self.setResourceGroupDirectory("imagesets",
+                                       os.path.join(defaultBaseDirectory, "imagesets"))
+        self.setResourceGroupDirectory("fonts",
+                                       os.path.join(defaultBaseDirectory, "fonts"))
+        self.setResourceGroupDirectory("schemes",
+                                       os.path.join(defaultBaseDirectory, "schemes"))
+        self.setResourceGroupDirectory("looknfeels",
+                                       os.path.join(defaultBaseDirectory, "looknfeel"))
+        self.setResourceGroupDirectory("layouts",
+                                       os.path.join(defaultBaseDirectory, "layouts"))
+        
+        # all this will never be set to anything else again
+        PyCEGUI.ImageManager.setImagesetDefaultResourceGroup("imagesets")
+        PyCEGUI.Font.setDefaultResourceGroup("fonts")
+        PyCEGUI.Scheme.setDefaultResourceGroup("schemes")
+        PyCEGUI.WidgetLookManager.setDefaultResourceGroup("looknfeels")
+        PyCEGUI.WindowManager.setDefaultResourceGroup("layouts")
+        
+        parser = PyCEGUI.System.getSingleton().getXMLParser()
+        if parser.isPropertyPresent("SchemaDefaultResourceGroup"):
+            parser.setProperty("SchemaDefaultResourceGroup", "schemas")
         
     def syncToProject(self, project):
-        self.renderWidget.syncToProject(project)
+        self.ensureCEGUIIsInitialised()
+        self.makeGLContextCurrent()
+        
+        # destroy all previous resources (if any)
+        PyCEGUI.ImageManager.getSingleton().destroyAll()
+        PyCEGUI.FontManager.getSingleton().destroyAll()
+        PyCEGUI.SchemeManager.getSingleton().destroyAll()
+        #PyCEGUI.WidgetLookManager.getSingleton().destroyAll()
+        PyCEGUI.WindowManager.getSingleton().destroyAllWindows()
+        
+        self.setResourceGroupDirectory("imagesets", project.getAbsolutePathOf(project.imagesetsPath))
+        self.setResourceGroupDirectory("fonts", project.getAbsolutePathOf(project.fontsPath))
+        self.setResourceGroupDirectory("schemes", project.getAbsolutePathOf(project.schemesPath))
+        self.setResourceGroupDirectory("looknfeels", project.getAbsolutePathOf(project.looknfeelsPath))
+        self.setResourceGroupDirectory("layouts", project.getAbsolutePathOf(project.layoutsPath))
+        
+        self.createAllSchemes()
+        
+    def createAllSchemes(self):
+        # I think just creating the schemes should be alright, schemes will
+        # case other resources to be loaded as well
+        PyCEGUI.SchemeManager.getSingleton().createAll("*.scheme", "schemes")
+    
+    def getAvailableSkins(self):
+        skins = []
+
+        i = PyCEGUI.WindowFactoryManager.getSingleton().getFalagardMappingIterator()
+
+        while not i.isAtEnd():
+            current_skin = i.getCurrentValue().d_windowType.split('/')[0]
+            if current_skin not in skins:
+                skins.append(current_skin)
+
+            i.next()
+
+        skins.sort()
+
+        return skins
+    
+    def getAvailableFonts(self):
+        fonts = []
+        font_iter = PyCEGUI.FontManager.getSingleton().getIterator()
+        while not font_iter.isAtEnd():
+            fonts.append(font_iter.getCurrentValue().getName())
+            font_iter.next()
+
+        fonts.sort()
+
+        return fonts
     
     def makeGLContextCurrent(self):
-        self.renderWidget.makeCurrent()
+        self.view.viewport().makeCurrent()
         
-    def activate(self, parentWidget, resourceIdentifier):
+    def activate(self, parentWidget, resourceIdentifier, scene = None):
         """Activates the CEGUI Widget for the given parentWidget (QWidget derived class).
         resourceIdentifier is usually absolute path of the file and is used to differentiate
         resolution settings
@@ -562,7 +596,11 @@ class ContainerWidget(QWidget):
         assert(self.currentParentWidget == None)
         self.currentParentWidget = parentWidget
         
+        if scene == None:
+            scene = GraphicsScene()
+        
         self.currentParentWidget.setUpdatesEnabled(False)
+        self.view.setScene(scene)
         if self.currentParentWidget.layout():
             self.currentParentWidget.layout().addWidget(self)
         else:
@@ -572,8 +610,9 @@ class ContainerWidget(QWidget):
     def deactivate(self):
         if self.currentParentWidget == None:
             return
-        
+            
         self.currentParentWidget.setUpdatesEnabled(False)
+        self.view.setScene(None)
         if self.currentParentWidget.layout():
             self.currentParentWidget.layout().removeWidget(self)
         else:
@@ -585,13 +624,14 @@ class ContainerWidget(QWidget):
     def slot_autoExpandChanged(self, expand):
         if expand == Qt.Checked:
             self.scrollArea.setWidgetResizable(True)
-            self.renderWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         else:
             self.scrollArea.setWidgetResizable(False)
-            self.renderWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            self.view.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            
             # set the currently preferred size
             self.slot_resolutionBoxChanged(self.resolutionBox.currentText())
-        
+                
     def slot_resolutionBoxChanged(self, text):
         if text == "Project Default":
             # special case
@@ -608,7 +648,7 @@ class ContainerWidget(QWidget):
                     if height < 1:
                         height = 1
                     
-                    self.renderWidget.setGeometry(0, 0, width, height)
+                    self.view.setGeometry(0, 0, width, height)
                     
                 except:
                     # ignore invalid literals
