@@ -35,7 +35,7 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         self.setLayout(layout)
 
     def activate(self):
-        assert(self.rootWidget == None)
+        assert(self.rootWidget is None)
         
         # we have to make the context the current context to ensure textures are fine
         self.parent.mainWindow.ceguiContainerWidget.makeGLContextCurrent()

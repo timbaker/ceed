@@ -30,6 +30,9 @@ import time
 import PyCEGUI
 import PyCEGUIOpenGLRenderer
 
+# make it visible to the outside
+import widget
+
 #class CEGUIQtLogger(PyCEGUI.Logger):
 #    """Redirects CEGUI log info to CEGUIWidgetInfo"""
 #
@@ -174,11 +177,11 @@ class GraphicsView(QGraphicsView):
         # overridden to make sure scene's size is always kept in sync with view's size
 
         if self.scene():
-            self.scene().setSceneRect(QRect(QPoint(0, 0), event.size()))
-        
             if self.containerWidget.CEGUIInitialised:
                 PyCEGUI.System.getSingleton().notifyDisplaySizeChanged(PyCEGUI.Sizef(event.size().width(), event.size().height()))
                 
+            self.scene().setSceneRect(QRect(QPoint(0, 0), event.size()))
+        
         super(GraphicsView, self).resizeEvent(event)
     
     def mouseMoveEvent(self, event):
@@ -206,7 +209,7 @@ class GraphicsView(QGraphicsView):
         if self.injectInput:
             button = self.translateQtMouseButton(event.button())
 
-            if button != None:
+            if button is not None:
                 handled = PyCEGUI.System.getSingleton().injectMouseButtonDown(button)
                 
         if not handled:
@@ -218,7 +221,7 @@ class GraphicsView(QGraphicsView):
         if self.injectInput:
             button = self.translateQtMouseButton(event.button())
             
-            if button != None:
+            if button is not None:
                 handled = PyCEGUI.System.getSingleton().injectMouseButtonUp(button)
                 
         if not handled:
@@ -426,7 +429,7 @@ class GraphicsView(QGraphicsView):
         if self.injectInput:
             button = self.translateQtKeyboardButton(event.key())
             
-            if button != None:
+            if button is not None:
                 handled = PyCEGUI.System.getSingleton().injectKeyDown(button)
                 
             char = event.text()
@@ -442,7 +445,7 @@ class GraphicsView(QGraphicsView):
         if self.injectInput:
             button = self.translateQtKeyboardButton(event.key())
             
-            if button != None:
+            if button is not None:
                 handled = PyCEGUI.System.getSingleton().injectKeyUp(button)
                 
         if not handled:
@@ -474,6 +477,7 @@ class ContainerWidget(QWidget):
         self.view.containerWidget = self
         
         self.scrollArea = self.findChild(QScrollArea, "scrollArea")
+        self.scrollArea.setBackgroundRole(QPalette.Dark)
         
         self.autoExpand = self.findChild(QCheckBox, "autoExpand")
         self.autoExpand.stateChanged.connect(self.slot_autoExpandChanged)
@@ -593,10 +597,10 @@ class ContainerWidget(QWidget):
         resolution settings
         """
         
-        assert(self.currentParentWidget == None)
+        assert(self.currentParentWidget is None)
         self.currentParentWidget = parentWidget
         
-        if scene == None:
+        if scene is None:
             scene = GraphicsScene()
         
         self.currentParentWidget.setUpdatesEnabled(False)
@@ -608,7 +612,7 @@ class ContainerWidget(QWidget):
         self.currentParentWidget.setUpdatesEnabled(True)
         
     def deactivate(self):
-        if self.currentParentWidget == None:
+        if self.currentParentWidget is None:
             return
             
         self.currentParentWidget.setUpdatesEnabled(False)

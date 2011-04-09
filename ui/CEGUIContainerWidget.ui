@@ -40,6 +40,12 @@
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
+      <property name="verticalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOff</enum>
+      </property>
+      <property name="horizontalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOff</enum>
+      </property>
       <property name="viewportUpdateMode">
        <enum>QGraphicsView::MinimalViewportUpdate</enum>
       </property>

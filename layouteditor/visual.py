@@ -21,7 +21,28 @@ from PySide.QtCore import *
 
 import mixedtab
 
+import cegui
 import PyCEGUI
+
+class EditingScene(cegui.GraphicsScene):
+    def __init__(self):
+        super(EditingScene, self).__init__()
+        
+        self.rootManipulator = None
+        
+    def setRootWidget(self, widget):
+        self.clear()
+        
+        self.rootManipulator = cegui.widget.Manipulator(widget)
+        self.addItem(self.rootManipulator)
+        
+    def setSceneRect(self, rect):
+        # overridden to keep the manipulators in sync
+        
+        super(EditingScene, self).setSceneRect(rect)
+        
+        if self.rootManipulator is not None:
+            self.rootManipulator.syncToWidget()
 
 class VisualEditing(QWidget, mixedtab.EditMode):
     def __init__(self, parent):
@@ -33,6 +54,8 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         layout = QVBoxLayout(self)
         layout.setMargin(0)
         self.setLayout(layout)
+        
+        self.scene = EditingScene()
 
     def initialise(self, rootWidget):
         self.replaceRootWidget(rootWidget)
@@ -41,6 +64,7 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         oldRoot = self.rootWidget
             
         self.rootWidget = newRoot
+        self.scene.setRootWidget(newRoot)
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
     
         if oldRoot:
@@ -50,7 +74,7 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         PyCEGUI.System.getSingleton().signalRedraw()
     
     def showEvent(self, event):
-        self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath)
+        self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath, self.scene)
 
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
 

@@ -92,7 +92,7 @@ class TabbedEditor(object):
         if currentActive == self:
             return
         
-        if currentActive != None:
+        if currentActive is not None:
             currentActive.deactivate()
         
         self.active = True
