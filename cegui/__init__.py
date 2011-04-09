@@ -118,6 +118,14 @@ class GraphicsScene(QGraphicsScene):
         slight flicker.
         """
         
+        painterType = painter.paintEngine().type()
+        if painterType != QPaintEngine.OpenGL and painterType != QPaintEngine.OpenGL2:
+            qWarning("cegui.GraphicsScene: drawBackground needs a "
+                     "QGLWidget to be set as viewport on the "
+                     "graphics view")
+            
+            return
+        
         # ensure we don't mess with the painter
         painter.save()
         
@@ -125,7 +133,7 @@ class GraphicsScene(QGraphicsScene):
         containerWidget.ensureCEGUIIsInitialised()
             
         glClearColor(0, 0, 0, 1)
-        glClear(GL_COLOR_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # signalRedraw is called to work around potential issues with dangling
         # references in the rendering code for some versions of CEGUI.
