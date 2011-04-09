@@ -20,15 +20,32 @@ from PySide.QtGui import *
 from PySide.QtCore import *
 
 import mixedtab
+import propertysetinspector
 
 import cegui
 import PyCEGUI
 
+import ui.layouteditor.propertiesdockwidget
+
+class PropertiesDockWidget(QDockWidget):
+    def __init__(self, parent):
+        super(PropertiesDockWidget, self).__init__()
+        
+        self.parent = parent
+        
+        self.ui = ui.layouteditor.propertiesdockwidget.Ui_PropertiesDockWidget()
+        self.ui.setupUi(self)
+        
+        self.inspector = self.findChild(propertysetinspector.PropertySetInspector, "inspector")
+
 class EditingScene(cegui.GraphicsScene):
-    def __init__(self):
+    def __init__(self, parent):
         super(EditingScene, self).__init__()
         
+        self.parent = parent
         self.rootManipulator = None
+        
+        self.selectionChanged.connect(self.slot_selectionChanged)
         
     def setRootWidget(self, widget):
         self.clear()
@@ -42,7 +59,17 @@ class EditingScene(cegui.GraphicsScene):
         super(EditingScene, self).setSceneRect(rect)
         
         if self.rootManipulator is not None:
-            self.rootManipulator.syncToWidget()
+            self.rootManipulator.updateFromWidgetData()
+            
+    def slot_selectionChanged(self):
+        selection = self.selectedItems()
+        
+        sets = []
+        for item in selection:
+            if isinstance(item, cegui.widget.Manipulator):
+                sets.append(item.widget)
+            
+        self.parent.propertiesDockWidget.inspector.setPropertySets(sets)
 
 class VisualEditing(QWidget, mixedtab.EditMode):
     def __init__(self, parent):
@@ -51,11 +78,13 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         self.parent = parent
         self.rootWidget = None
         
+        self.propertiesDockWidget = PropertiesDockWidget(self)
+        
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         
-        self.scene = EditingScene()
+        self.scene = EditingScene(self)
 
     def initialise(self, rootWidget):
         self.replaceRootWidget(rootWidget)
@@ -75,15 +104,19 @@ class VisualEditing(QWidget, mixedtab.EditMode):
     
     def showEvent(self, event):
         self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath, self.scene)
-
+        
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
+
+        self.propertiesDockWidget.setEnabled(True)
 
         super(VisualEditing, self).showEvent(event)
     
     def hideEvent(self, event):
+        self.propertiesDockWidget.setEnabled(False)
+        
         # this is sometimes called even before the parent is initialised
         if hasattr(self.parent, "mainWindow"):
             self.parent.mainWindow.ceguiContainerWidget.deactivate()
-        
+            
         super(VisualEditing, self).hideEvent(event)
     

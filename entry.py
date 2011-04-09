@@ -92,6 +92,7 @@ class Application(QApplication):
         # first recompile all UI files to ensure they are up to date
         compileuifiles.compileUIFiles("./ui")
         compileuifiles.compileUIFiles("./ui/imageseteditor")
+        compileuifiles.compileUIFiles("./ui/layouteditor")
         compileuifiles.compileUIFiles("./ui/widgets")
         
         self.mainwindow = None

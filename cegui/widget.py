@@ -38,11 +38,14 @@ class Manipulator(QGraphicsRectItem):
         
         super(Manipulator, self).__init__()
         
-        self.setFlags(QGraphicsItem.ItemIsSelectable)
-        self.setPen(QPen(Qt.GlobalColor.white))
+        self.setFlags(QGraphicsItem.ItemIsFocusable | 
+                      QGraphicsItem.ItemIsSelectable |
+                      QGraphicsItem.ItemSendsGeometryChanges)
+        
+        self.setPen(QPen(Qt.GlobalColor.transparent))
         
         self.widget = widget
-        self.syncToWidget()
+        self.updateFromWidgetData()
         
         if recursive:
             idx = 0
@@ -59,10 +62,7 @@ class Manipulator(QGraphicsRectItem):
                 
                 idx += 1
                 
-        self.label = QGraphicsTextItem(self.widget.getName(), self)
-        self.label.setDefaultTextColor(QColor(Qt.GlobalColor.white))
-                
-    def syncToWidget(self):
+    def updateFromWidgetData(self):
         assert(self.widget is not None)
         
         unclippedOuterRect = self.widget.getUnclippedOuterRect()
@@ -81,5 +81,31 @@ class Manipulator(QGraphicsRectItem):
             if not isinstance(item, Manipulator):
                 continue
             
-            item.syncToWidget()
+            item.updateFromWidgetData()
+    
+    def moveToFront(self):
+        parentItem = self.parentItem()
+        if parentItem:
+            for item in parentItem.childItems():
+                if item == self:
+                    continue
+                
+                # For some reason this is the opposite of what (IMO) it should be
+                # which is self.stackBefore(item)
+                #
+                # Is Qt documentation flawed or something?!
+                item.stackBefore(self)
+                
+            parentItem.moveToFront()
+            
+    def itemChange(self, change, value):    
+        if change == QGraphicsItem.ItemSelectedHasChanged:
+            if value:
+                self.widget.moveToFront()
+                self.moveToFront()
+                self.setActive(True)
+                
+            return value
+        
+        return super(Manipulator, self).itemChange(change, value)
         

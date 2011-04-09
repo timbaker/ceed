@@ -606,7 +606,10 @@ class ContainerWidget(QWidget):
         resolution settings
         """
         
-        assert(self.currentParentWidget is None)
+        # sometimes things get called in the opposite order, lets be forgiving and robust!
+        if self.currentParentWidget is not None:
+            self.deactivate()
+            
         self.currentParentWidget = parentWidget
         
         if scene is None:
@@ -622,6 +625,8 @@ class ContainerWidget(QWidget):
         
         # cause full redraw to ensure nothing gets stuck
         PyCEGUI.System.getSingleton().signalRedraw()
+        # and mark the view as dirty
+        self.view.update()
         
     def deactivate(self):
         if self.currentParentWidget is None:

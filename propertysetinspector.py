@@ -16,7 +16,7 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-from PySide import QtCore
+from PySide.QtCore import *
 from PySide.QtGui import *
 
 import propertyinspector
@@ -25,6 +25,15 @@ import ui.propertysetinspector
 
 # Unix like wildcard matching for property filtering
 import fnmatch
+
+# !!!
+# All this code assumes that Widget creators aren't stupid and won't try to
+# add 2 different properties with same name and origin to 2 different widgets
+#
+# Name clashes with different origins should be fine
+#
+# TODO: I never do any testing for this!
+# !!!
 
 class PropertyValue(QStandardItem):
     """Standard item displaying and holding the value.
@@ -38,14 +47,33 @@ class PropertyValue(QStandardItem):
         super(PropertyValue, self).__init__()
         
         self.parent = parent
-        self.setText(self.parent.getCurrentValue())
         self.setEditable(True)
+        
+        self.update()
+            
+    def update(self):
+        self.setText(self.parent.getCurrentValue())
+        if self.parent.isCurrentValueDefault():
+            font = QFont()
+            font.setItalic(True)
+            
+            self.setFont(font)
+            
+            self.setForeground(QBrush(QColor(Qt.GlobalColor.gray)))
+            
+        else:
+            font = QFont()
+            font.setPixelSize(14)
+            
+            self.setFont(font)
+        
+            self.setForeground(QBrush(QColor(Qt.GlobalColor.black)))
         
 class PropertyEntry(QStandardItem):
     """Standard item displaying the name of a property
     """
         
-    def __init__(self, parent, property):
+    def __init__(self, parent, propertyName):
         """parent is the parent property category,
         property is the property of this entry (the actual CEGUI::Property instance)
         """
@@ -53,24 +81,67 @@ class PropertyEntry(QStandardItem):
         super(PropertyEntry, self).__init__()
         
         self.parent = parent
-        self.property = property
-        self.setText(property.getName())
+        self.propertyName = propertyName
+        self.setText(propertyName)
         self.setEditable(False)
         
         font = QFont()
         font.setPixelSize(14)
-        self.setData(font, QtCore.Qt.FontRole)
-        
-        assert(self.parent.text() == property.getOrigin())
+        self.setFont(font)
         
         self.value = PropertyValue(self)
         
-    def getPropertySet(self):
-        return self.parent.getPropertySet()
+    def getPropertySets(self):
+        return self.parent.getPropertySets()
     
     def getCurrentValue(self):
-        return self.property.get(self.getPropertySet())
+        value = None
+        missingInSome = False
+        
+        for set in self.getPropertySets():
+            if not set.isPropertyPresent(self.propertyName):
+                missingInSome = True
+                continue
+            
+            if value is None:
+                value = set.getProperty(self.propertyName)
+                continue
 
+            newValue = set.getProperty(self.propertyName)
+            
+            if value != newValue:
+                return "<varies>"
+        
+        return value
+    
+    def isCurrentValueDefault(self):
+        for set in self.getPropertySets():
+            if set.isPropertyPresent(self.propertyName):
+                if not set.isPropertyDefault(self.propertyName):
+                    return False
+        
+        return True
+
+    def getPropertyInstance(self):
+        ret = None
+        for set in self.getPropertySets():
+            if set.isPropertyPresent(self.propertyName):
+                if ret is None:
+                    ret = set.getPropertyInstance(self.propertyName)
+                    continue
+                
+                other = set.getPropertyInstance(self.propertyName)
+                
+                # Sanity checks, if these fail, there is a property name clash!
+                assert(ret.getOrigin() == other.getOrigin())
+                assert(ret.getHelp() == other.getHelp())
+                assert(ret.getDataType() == other.getDataType())
+        
+        return ret
+
+    def update(self):
+        self.value.update()
+    
 class PropertyCategory(QStandardItem):
     """Groups properties of the same origin
     """ 
@@ -86,24 +157,24 @@ class PropertyCategory(QStandardItem):
         self.setText(origin)
         self.setEditable(False)
         
-        self.setData(QBrush(QtCore.Qt.GlobalColor.lightGray), QtCore.Qt.BackgroundRole)
+        self.setData(QBrush(Qt.GlobalColor.lightGray), Qt.BackgroundRole)
         font = QFont()
         font.setBold(True)
         font.setPixelSize(16)
-        self.setData(font, QtCore.Qt.FontRole)
+        self.setData(font, Qt.FontRole)
         
         self.propertyCount = QStandardItem()
-        self.propertyCount.setData(QBrush(QtCore.Qt.GlobalColor.lightGray), QtCore.Qt.BackgroundRole)
+        self.propertyCount.setData(QBrush(Qt.GlobalColor.lightGray), Qt.BackgroundRole)
         self.propertyCount.setEditable(False)
         
-    def getPropertySet(self):
-        return self.parent.getPropertySet()
+    def getPropertySets(self):
+        return self.parent.getPropertySets()
         
     def setFilterMatched(self, matched):
         if matched:
-            self.setData(QBrush(QtCore.Qt.GlobalColor.black), QtCore.Qt.ForegroundRole)
+            self.setData(QBrush(Qt.GlobalColor.black), Qt.ForegroundRole)
         else:
-            self.setData(QBrush(QtCore.Qt.GlobalColor.gray), QtCore.Qt.ForegroundRole)
+            self.setData(QBrush(Qt.GlobalColor.gray), Qt.ForegroundRole)
         
     def filterProperties(self, filter):
         toShow = []
@@ -145,7 +216,7 @@ class PropertySetInspectorDelegate(QItemDelegate):
     
     def createEditor(self, parent, option, index):
         propertyEntry = self.setInspector.getPropertyEntry(index)
-        inspector, mapping = propertyinspector.PropertyInspectorManager.getInspectorAndMapping(propertyEntry.property)
+        inspector, mapping = propertyinspector.PropertyInspectorManager.getInspectorAndMapping(propertyEntry.getPropertyInstance())
         
         ret = inspector.createEditWidget(parent, propertyEntry, mapping)
     
@@ -164,17 +235,18 @@ class PropertySetInspectorDelegate(QItemDelegate):
             return
         
         editorWidget.inspector.notifyEditingEnded(editorWidget, propertyEntry, editorWidget.mapping)
+        propertyEntry.update()
 
 class PropertySetInspector(QWidget):
     """Allows browsing and editing of any CEGUI::PropertySet derived class
     """
     
-    propertyEditingStarted = QtCore.Signal(str)
-    propertyEditingEnded = QtCore.Signal(str, str, str)
-    propertyEditingProgress = QtCore.Signal(str, str)
+    propertyEditingStarted = Signal(str)
+    propertyEditingEnded = Signal(str, str, str)
+    propertyEditingProgress = Signal(str, str)
     
-    def __init__(self):
-        super(PropertySetInspector, self).__init__()
+    def __init__(self, parent = None):
+        super(PropertySetInspector, self).__init__(parent)
         
         self.ui = ui.propertysetinspector.Ui_PropertySetInspector()
         self.ui.setupUi(self)
@@ -189,8 +261,7 @@ class PropertySetInspector(QWidget):
         self.view.setItemDelegate(PropertySetInspectorDelegate(self))
         self.view.setModel(self.model)
         
-        #wnd = PyCEGUI.FrameWindow("type", "name")
-        #self.setPropertySet(wnd)
+        self.setPropertySets([])
         
     def getPropertyEntry(self, index):
         if not index.parent().isValid():
@@ -200,42 +271,55 @@ class PropertySetInspector(QWidget):
         category = self.model.item(index.parent().row(), 0)
         return category.child(index.row(), 0)
         
-    def setPropertySet(self, set):
-        self.propertySet = set
+    def setPropertySets(self, sets):
+        # prevent flicker
+        self.setUpdatesEnabled(False)
         
         self.model.clear()
+        self.propertySets = sets
         
-        propertyIt = self.propertySet.getPropertyIterator()
-        propertiesByOrigin = {}
-        
-        while not propertyIt.isAtEnd():
-            property = propertyIt.getCurrentValue()
-            origin = property.getOrigin()
+        if len(self.propertySets) > 0:
+            propertiesByOrigin = {}
             
-            if not propertiesByOrigin.has_key(origin):
-                propertiesByOrigin[origin] = []
+            for set in self.propertySets:
+                propertyIt = set.getPropertyIterator()
                 
-            propertiesByOrigin[origin].append(property)
-            
-            propertyIt.next()
-        
-        for origin, properties in propertiesByOrigin.iteritems():
-            category = PropertyCategory(self, origin)
-            
-            self.model.appendRow([category, category.propertyCount])
-            
-            propertyCount = 0
-            for property in properties:
-                entry = PropertyEntry(category, property)
-                category.appendRow([entry, entry.value])
-                propertyCount += 1
+                while not propertyIt.isAtEnd():
+                    property = propertyIt.getCurrentValue()
+                    propertyName = property.getName()
+                    origin = property.getOrigin()
+                    
+                    if not propertiesByOrigin.has_key(origin):
+                        propertiesByOrigin[origin] = []
+                    
+                    if propertyName not in propertiesByOrigin[origin]:
+                        propertiesByOrigin[origin].append(propertyName)
+                    
+                    propertyIt.next()
                 
-            category.propertyCount.setText("%i properties" % propertyCount)
+            for origin, propertyNames in propertiesByOrigin.iteritems():
+                category = PropertyCategory(self, origin)
                 
-        self.view.expandAll()
+                self.model.appendRow([category, category.propertyCount])
+                
+                propertyCount = 0
+                for propertyName in propertyNames:
+                    entry = PropertyEntry(category, propertyName)
+                    category.appendRow([entry, entry.value])
+                    propertyCount += 1
+                    
+                category.propertyCount.setText("%i properties" % propertyCount)
+                    
+            self.view.expandAll()
+            self.setEnabled(True)
+            
+        else:
+            self.setEnabled(False)
+            
+        self.setUpdatesEnabled(True)
         
-    def getPropertySet(self):
-        return self.propertySet
+    def getPropertySets(self):
+        return self.propertySets
                 
     def filterChanged(self, filter):
         # we append star at the end by default (makes property filtering much more practical)

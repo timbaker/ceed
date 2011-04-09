@@ -714,7 +714,8 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
         
         selectedItems = self.scene.selectedItems()
         if len(selectedItems) == 1:
-            self.dockWidget.list.scrollToItem(selectedItems[0].listItem)
+            if isinstance(selectedItems[0], elements.ImageEntry):
+                self.dockWidget.list.scrollToItem(selectedItems[0].listItem)
         
     def slot_toggleEditOffsets(self, enabled):
         self.scene.clearSelection()

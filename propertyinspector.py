@@ -76,7 +76,7 @@ class PropertyInspector(object):
         ret.propertyEntry = propertyEntry
         
         propertySetInspector = propertyEntry.parent.parent
-        propertySetInspector.propertyEditingStarted.emit(propertyEntry.property.getName())
+        propertySetInspector.propertyEditingStarted.emit(propertyEntry.propertyName)
         
         return ret 
     
@@ -103,7 +103,7 @@ class PropertyInspector(object):
         propertySetInspector = propertyEntry.parent.parent
         value = self.getCurrentValueForProperty(widget, propertyEntry, mapping)
         
-        propertySetInspector.propertyEditingProgress.emit(propertyEntry.property.getName(), value) 
+        propertySetInspector.propertyEditingProgress.emit(propertyEntry.propertyName, value) 
     
     def notifyEditingEnded(self, widget, propertyEntry, mapping):
         propertySetInspector = propertyEntry.parent.parent
@@ -111,7 +111,7 @@ class PropertyInspector(object):
         value = self.getCurrentValueForProperty(widget, propertyEntry, mapping)
         
         self.impl_populatePropertyEntry(widget, propertyEntry, mapping)
-        propertySetInspector.propertyEditingEnded.emit(propertyEntry.property.getName(), oldValue, value) 
+        propertySetInspector.propertyEditingEnded.emit(propertyEntry.propertyName, oldValue, value) 
 
 class LineEditPropertyInspector(PropertyInspector):
     def canEdit(self):
