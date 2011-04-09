@@ -303,6 +303,8 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
         self.scene = QGraphicsScene()
         QGraphicsView.__init__(self, self.scene)
         
+        self.setFrameStyle(QFrame.NoFrame)
+        
         # use OpenGL for view redrawing
         # this has slightly better (and consistent) performance when it comes to lots of images
         self.setViewport(QGLWidget());
@@ -703,6 +705,9 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
             event.accept()
             
     def slot_selectionChanged(self):
+        if QApplication.closingDown():
+            return
+        
         # if dockWidget is changing the selection, back off
         if self.dockWidget.selectionUnderway:
             return

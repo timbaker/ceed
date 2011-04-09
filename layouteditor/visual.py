@@ -52,7 +52,7 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         self.rootWidget = None
         
         layout = QVBoxLayout(self)
-        layout.setMargin(0)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         
         self.scene = EditingScene()
@@ -69,7 +69,7 @@ class VisualEditing(QWidget, mixedtab.EditMode):
     
         if oldRoot:
             PyCEGUI.WindowManager.getSingleton().destroyWindow(oldRoot)
-        
+            
         # cause full redraw to ensure nothing gets stuck
         PyCEGUI.System.getSingleton().signalRedraw()
     

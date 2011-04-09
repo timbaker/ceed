@@ -31,7 +31,7 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         self.rootWidget = None
         
         layout = QVBoxLayout(self)
-        layout.setMargin(0)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def activate(self):

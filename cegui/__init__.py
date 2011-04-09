@@ -55,11 +55,12 @@ class DebugInfo(QDockWidget):
     
     # This will allow us to view logs in Qt in the future
     
-    def __init__(self, containerWidget, mainWindow):
-        super(DebugInfo, self).__init__(mainWindow)
+    def __init__(self, containerWidget):
+        super(DebugInfo, self).__init__()
         
-        self.setFloating(True)
         self.setVisible(False)
+        
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         
         self.containerWidget = containerWidget
         # update FPS and render time very second
@@ -222,7 +223,7 @@ class GraphicsView(QGraphicsView):
                 
         if not handled:
             super(GraphicsView, self).mousePressEvent(event)
-                
+        
     def mouseReleaseEvent(self, event):
         handled = False
         
@@ -480,7 +481,7 @@ class ContainerWidget(QWidget):
         
         self.currentParentWidget = None
 
-        self.debugInfo = DebugInfo(self, mainWindow)
+        self.debugInfo = DebugInfo(self)
         self.view = self.findChild(GraphicsView, "view")
         self.view.containerWidget = self
         
@@ -618,6 +619,9 @@ class ContainerWidget(QWidget):
         else:
             self.setParent(self.currentParentWidget)
         self.currentParentWidget.setUpdatesEnabled(True)
+        
+        # cause full redraw to ensure nothing gets stuck
+        PyCEGUI.System.getSingleton().signalRedraw()
         
     def deactivate(self):
         if self.currentParentWidget is None:

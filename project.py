@@ -216,7 +216,8 @@ class Item(QStandardItem):
         
         if self.itemType == Item.File:
             ret.set("type", "file")
-            ret.set("path", self.path)
+            # the replace is to prevent Windows from putting it's backslashes into project files
+            ret.set("path", str(self.path).replace("\\", "/"))
             
         elif self.itemType == Item.Folder:
             ret.set("type", "folder")

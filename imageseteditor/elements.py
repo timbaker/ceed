@@ -29,11 +29,10 @@ class ImageLabel(QGraphicsTextItem):
     """
     
     def __init__(self, parent):
-        super(ImageLabel, self).__init__()
+        super(ImageLabel, self).__init__(parent)
         
         self.parent = parent
         
-        self.setParentItem(parent)
         self.setFlags(QGraphicsItem.ItemIgnoresTransformations)
         self.setOpacity(0.8)
         
@@ -71,11 +70,10 @@ class ImageOffset(QGraphicsPixmapItem):
     """
     
     def __init__(self, parent):
-        super(ImageOffset, self).__init__()
+        super(ImageOffset, self).__init__(parent)
         
         self.parent = parent
         
-        self.setParentItem(parent)
         self.setFlags(QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemIsSelectable | 
                       QGraphicsItem.ItemIgnoresTransformations |
@@ -159,7 +157,7 @@ class ImageEntry(QGraphicsRectItem):
                        lambda self, value: self.offset.setY(-float(value) + 0.5))
     
     def __init__(self, parent):
-        super(ImageEntry, self).__init__()
+        super(ImageEntry, self).__init__(parent)
         
         self.parent = parent
         
@@ -174,11 +172,12 @@ class ImageEntry(QGraphicsRectItem):
         self.potentialMove = False
         self.oldPosition = None
         
-        self.setParentItem(parent)
         self.setFlags(QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemIsSelectable |
                       #QGraphicsItem.ItemClipsChildrenToShape |
                       QGraphicsItem.ItemSendsGeometryChanges)
+        
+        self.setVisible(True)
         
         self.label = ImageLabel(self)
         self.offset = ImageOffset(self)
