@@ -65,16 +65,22 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.selectionSynchronisationUnderway = False
         
         self.positionX = self.findChild(QLineEdit, "positionX")
+        self.positionX.setValidator(QIntValidator(0, 9999999, self))
         self.positionX.textChanged.connect(self.slot_positionXChanged)
         self.positionY = self.findChild(QLineEdit, "positionY")
+        self.positionY.setValidator(QIntValidator(0, 9999999, self))
         self.positionY.textChanged.connect(self.slot_positionYChanged)
         self.width = self.findChild(QLineEdit, "width")
+        self.width.setValidator(QIntValidator(0, 9999999, self))
         self.width.textChanged.connect(self.slot_widthChanged)
         self.height = self.findChild(QLineEdit, "height")
+        self.height.setValidator(QIntValidator(0, 9999999, self))
         self.height.textChanged.connect(self.slot_heightChanged)
         self.offsetX = self.findChild(QLineEdit, "offsetX")
+        self.offsetX.setValidator(QIntValidator(-9999999, 9999999, self))
         self.offsetX.textChanged.connect(self.slot_offsetXChanged)
         self.offsetY = self.findChild(QLineEdit, "offsetY")
+        self.offsetY.setValidator(QIntValidator(-9999999, 9999999, self))
         self.offsetY.textChanged.connect(self.slot_offsetYChanged)
         
         self.setActiveImageEntry(None)

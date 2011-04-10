@@ -61,7 +61,7 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         # this is sometimes called even before the parent is initialised
         if hasattr(self.parent, "mainWindow"):
             self.parent.mainWindow.ceguiContainerWidget.disableInput()
-            self.parent.mainWindow.ceguiContainerWidget.deactivate()
+            self.parent.mainWindow.ceguiContainerWidget.deactivate(self)
 
         if self.rootWidget:
             PyCEGUI.System.getSingleton().setGUISheet(None)

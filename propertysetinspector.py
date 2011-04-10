@@ -154,7 +154,14 @@ class PropertyCategory(QStandardItem):
         super(PropertyCategory, self).__init__()
         
         self.parent = parent
-        self.setText(origin)
+        
+        label = origin
+        # we strip the CEGUI/ if any because most users only use CEGUI stock widgets and it
+        # would be superfluous for them to display CEGUI/ everywhere
+        if label.startswith("CEGUI/"):
+            label = label[6:]    
+        self.setText(label)
+        
         self.setEditable(False)
         
         self.setData(QBrush(Qt.GlobalColor.lightGray), Qt.BackgroundRole)
@@ -256,13 +263,12 @@ class PropertySetInspector(QWidget):
         
         self.view = self.findChild(QTreeView, "view")
         self.model = QStandardItemModel()
-        self.model.setColumnCount(2)
-        self.model.setHorizontalHeaderLabels(["Name", "Value"])
-        self.view.setItemDelegate(PropertySetInspectorDelegate(self))
-        self.view.setModel(self.model)
         
         self.setPropertySets([])
         
+        self.view.setItemDelegate(PropertySetInspectorDelegate(self))
+        self.view.setModel(self.model)
+
     def getPropertyEntry(self, index):
         if not index.parent().isValid():
             # definitely not a property entry if it doesn't have a parent
@@ -276,6 +282,8 @@ class PropertySetInspector(QWidget):
         self.setUpdatesEnabled(False)
         
         self.model.clear()
+        self.model.setColumnCount(2)
+        self.model.setHorizontalHeaderLabels(["Name", "Value"])
         self.propertySets = sets
         
         if len(self.propertySets) > 0:

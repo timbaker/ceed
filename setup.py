@@ -19,8 +19,6 @@
 # Allows freezing the executable (currently Windows specific code pretty much)
 
 NAME = "CEED"
-SHORTCUT_NAME = NAME
-SHORTCUT_DIR = "CEGUI"
 
 from cx_Freeze import setup, Executable
 
@@ -39,10 +37,7 @@ buildOptions = dict(
         "icons",
         "images",
         "ui", # FIXME: because we always rebuild those upon starting
-        "data",
-        
-        # hax for now
-        #"C:/Python26/Lib/site-packages/PyCEGUI/CEGUIOpenGLRenderer.dll",
+        "data"
     ]
 )
 
@@ -55,8 +50,7 @@ setup(
         Executable(
             "entry.py",
             targetName = NAME + ".exe",
-            shortcutName = SHORTCUT_NAME,
-            shortcutDir = SHORTCUT_DIR
+            icon = "icons/application_icon.ico"
         )
     ] 
 )

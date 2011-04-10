@@ -124,12 +124,24 @@
       </item>
       <item>
        <widget class="QComboBox" name="resolutionBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="editable">
          <bool>true</bool>
         </property>
         <item>
          <property name="text">
-          <string>Project Default</string>
+          <string>Project Default (Layout)</string>
          </property>
         </item>
         <item>

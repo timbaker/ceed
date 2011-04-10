@@ -19,8 +19,6 @@
 from PySide.QtCore import *
 from PySide.QtGui import *
 
-import PyCEGUI
-
 # This module contains helping classes for CEGUI widget handling
 
 class Manipulator(QGraphicsRectItem):
@@ -41,6 +39,7 @@ class Manipulator(QGraphicsRectItem):
         self.setFlags(QGraphicsItem.ItemIsFocusable | 
                       QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemSendsGeometryChanges)
+        self.setAcceptsHoverEvents(True)
         
         self.setPen(QPen(Qt.GlobalColor.transparent))
         
@@ -103,9 +102,18 @@ class Manipulator(QGraphicsRectItem):
             if value:
                 self.widget.moveToFront()
                 self.moveToFront()
-                self.setActive(True)
                 
             return value
         
         return super(Manipulator, self).itemChange(change, value)
+        
+    def hoverEnterEvent(self, event):
+        super(Manipulator, self).hoverEnterEvent(event)
+        
+        self.setPen(QPen(QColor(0, 255, 0, 127)))
+        
+    def hoverLeaveEvent(self, event):
+        self.setPen(QPen(Qt.GlobalColor.transparent))
+
+        super(Manipulator, self).hoverLeaveEvent(event)
         

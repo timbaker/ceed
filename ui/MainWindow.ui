@@ -16,8 +16,15 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="acceptDrops">
+   <bool>false</bool>
+  </property>
   <property name="windowTitle">
    <string>CEGUI Unified Editor</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>icons/application_icon.png</normaloff>icons/application_icon.png</iconset>
   </property>
   <property name="windowOpacity">
    <double>1.000000000000000</double>

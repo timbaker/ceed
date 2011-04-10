@@ -608,7 +608,7 @@ class ContainerWidget(QWidget):
         
         # sometimes things get called in the opposite order, lets be forgiving and robust!
         if self.currentParentWidget is not None:
-            self.deactivate()
+            self.deactivate(self.currentParentWidget)
             
         self.currentParentWidget = parentWidget
         
@@ -628,8 +628,8 @@ class ContainerWidget(QWidget):
         # and mark the view as dirty
         self.view.update()
         
-    def deactivate(self):
-        if self.currentParentWidget is None:
+    def deactivate(self, parentWidget):
+        if self.currentParentWidget != parentWidget:
             return
             
         self.currentParentWidget.setUpdatesEnabled(False)
@@ -654,7 +654,7 @@ class ContainerWidget(QWidget):
             self.slot_resolutionBoxChanged(self.resolutionBox.currentText())
                 
     def slot_resolutionBoxChanged(self, text):
-        if text == "Project Default":
+        if text == "Project Default (Layout)":
             # special case
             pass
         else:

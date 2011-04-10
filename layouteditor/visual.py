@@ -26,6 +26,7 @@ import cegui
 import PyCEGUI
 
 import ui.layouteditor.propertiesdockwidget
+import ui.layouteditor.hierarchydockwidget
 
 class PropertiesDockWidget(QDockWidget):
     def __init__(self, parent):
@@ -37,6 +38,37 @@ class PropertiesDockWidget(QDockWidget):
         self.ui.setupUi(self)
         
         self.inspector = self.findChild(propertysetinspector.PropertySetInspector, "inspector")
+
+class HierarchyDockWidget(QDockWidget):
+    def __init__(self, parent):
+        super(HierarchyDockWidget, self).__init__()
+        
+        self.parent = parent
+        
+        self.ui = ui.layouteditor.hierarchydockwidget.Ui_HierarchyDockWidget()
+        self.ui.setupUi(self)
+        
+        self.tree = self.findChild(QTreeWidget, "tree")
+        
+        self.rootWidgetManipulator = None
+        
+    def getTreeItemForManipulator(self, manipulator):
+        ret = QTreeWidgetItem([manipulator.widget.getName(), manipulator.widget.getType()])
+        
+        for item in manipulator.childItems():
+            if isinstance(item, cegui.widget.Manipulator):
+                childItem = self.getTreeItemForManipulator(item)
+                ret.addChild(childItem)
+                
+        return ret
+        
+    def setRootWidgetManipulator(self, root):
+        self.rootWidgetManipulator = root
+        
+        rootWidgetItem = self.getTreeItemForManipulator(root)
+        self.tree.clear()
+        self.tree.addTopLevelItem(rootWidgetItem)
+        self.tree.expandAll()
 
 class EditingScene(cegui.GraphicsScene):
     def __init__(self, parent):
@@ -79,6 +111,7 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         self.rootWidget = None
         
         self.propertiesDockWidget = PropertiesDockWidget(self)
+        self.hierarchyDockWidget = HierarchyDockWidget(self)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -94,6 +127,8 @@ class VisualEditing(QWidget, mixedtab.EditMode):
             
         self.rootWidget = newRoot
         self.scene.setRootWidget(newRoot)
+        self.hierarchyDockWidget.setRootWidgetManipulator(self.scene.rootManipulator)
+
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
     
         if oldRoot:
@@ -108,15 +143,17 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
 
         self.propertiesDockWidget.setEnabled(True)
+        self.hierarchyDockWidget.setEnabled(True)
 
         super(VisualEditing, self).showEvent(event)
     
     def hideEvent(self, event):
         self.propertiesDockWidget.setEnabled(False)
+        self.hierarchyDockWidget.setEnabled(False)
         
         # this is sometimes called even before the parent is initialised
         if hasattr(self.parent, "mainWindow"):
-            self.parent.mainWindow.ceguiContainerWidget.deactivate()
+            self.parent.mainWindow.ceguiContainerWidget.deactivate(self)
             
         super(VisualEditing, self).hideEvent(event)
     
