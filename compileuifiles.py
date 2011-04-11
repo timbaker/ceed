@@ -21,7 +21,8 @@
 import os
 from pysideuic import compileUi
 
-def compileUIFiles(ui_dir = None):
+# written by Paul D Turner for CELayoutEditorII
+def compileUIFiles(ui_dir):
     for name in os.listdir(ui_dir):
         ui_name = os.path.join(ui_dir, name)
         if os.path.isfile(ui_name):
@@ -31,6 +32,3 @@ def compileUIFiles(ui_dir = None):
                 outfile = open(os.path.join(ui_dir, outname), "w")
                 compileUi(ui_name, outfile)
                 outfile.close()
-
-if __name__ == "__main__":
-    compileUIFiles()

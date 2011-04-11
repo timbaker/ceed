@@ -597,6 +597,34 @@ class ContainerWidget(QWidget):
 
         return fonts
     
+    def getAvailableWidgetsBySkin(self):
+        ret = {}
+        ret["__no_skin__"] = ["DefaultWindow", "DragDropContainer",
+                             "VerticalLayoutContainer", "HorizontalLayoutContainer",
+                             "GridLayoutContainer"]
+
+        i = PyCEGUI.WindowFactoryManager.getSingleton().getFalagardMappingIterator()
+        while not i.isAtEnd():
+            #base = i.getCurrentValue().d_baseType
+            mapped_type = i.getCurrentValue().d_windowType.split('/')
+            look = mapped_type[0]
+            widget = mapped_type[1]
+
+            # insert empty list for the look if it's a new look
+            if not look in ret:
+                ret[look] = []
+
+            # append widget name to the list for it's look
+            ret[look].append(widget)
+
+            i.next()
+
+        # sort the lists
+        for look in ret:
+            ret[look].sort()
+
+        return ret
+    
     def makeGLContextCurrent(self):
         self.view.viewport().makeCurrent()
         

@@ -25,6 +25,15 @@ import commands
 from PySide.QtGui import QTabWidget
 
 class ModeSwitchCommand(commands.UndoCommand):
+    """Undo command that is pushed to the undo stack whenever user switches edit modes.
+    
+    Switching edit mode has to be an undoable command because the other commands might
+    or might not make sense if user is not in the right mode.
+    
+    This has a drawback that switching to Live Preview (layout editing) and back is
+    undoable even though you can't affect the document in any way whilst in Live Preview
+    mode.
+    """
     def __init__(self, parent, oldTabIndex, newTabIndex):
         super(ModeSwitchCommand, self).__init__()
         
@@ -53,13 +62,27 @@ class ModeSwitchCommand(commands.UndoCommand):
         super(ModeSwitchCommand, self).redo()
 
 class EditMode(object):
+    """Interface class for the edit mode widgets (more a mixin class)
+    This practically just ensures that the inherited classes have activate and deactivate
+    methods.
+    """
+    
     def __init__(self):
         pass
     
     def activate(self):
+        """This is called whenever this edit mode is activated (user clicked on the tab button
+        representing it). It's not called when user switches from a different file tab whilst
+        this tab was already active when user was switching from this file tab to another one!
+        """
         pass
     
     def deactivate(self):
+        """This is called whenever this edit mode is deactivated (user clicked on another tab button
+        representing another mode). It's not called when user switches to this file tab from another
+        file tab and this edit mode was already active before user switched from the file tab to another
+        file tab.
+        """
         pass
 
 class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):

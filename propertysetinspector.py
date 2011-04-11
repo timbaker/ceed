@@ -26,6 +26,8 @@ import ui.propertysetinspector
 # Unix like wildcard matching for property filtering
 import fnmatch
 
+# TODO: I am not entirely happy with this module and will likely rewrite it a bit
+
 # !!!
 # All this code assumes that Widget creators aren't stupid and won't try to
 # add 2 different properties with same name and origin to 2 different widgets

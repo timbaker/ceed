@@ -25,19 +25,9 @@ import propertysetinspector
 import cegui
 import PyCEGUI
 
-import ui.layouteditor.propertiesdockwidget
 import ui.layouteditor.hierarchydockwidget
-
-class PropertiesDockWidget(QDockWidget):
-    def __init__(self, parent):
-        super(PropertiesDockWidget, self).__init__()
-        
-        self.parent = parent
-        
-        self.ui = ui.layouteditor.propertiesdockwidget.Ui_PropertiesDockWidget()
-        self.ui.setupUi(self)
-        
-        self.inspector = self.findChild(propertysetinspector.PropertySetInspector, "inspector")
+import ui.layouteditor.propertiesdockwidget
+import ui.layouteditor.createwidgetdockwidget
 
 class HierarchyDockWidget(QDockWidget):
     def __init__(self, parent):
@@ -69,6 +59,50 @@ class HierarchyDockWidget(QDockWidget):
         self.tree.clear()
         self.tree.addTopLevelItem(rootWidgetItem)
         self.tree.expandAll()
+
+class PropertiesDockWidget(QDockWidget):
+    def __init__(self, parent):
+        super(PropertiesDockWidget, self).__init__()
+        
+        self.parent = parent
+        
+        self.ui = ui.layouteditor.propertiesdockwidget.Ui_PropertiesDockWidget()
+        self.ui.setupUi(self)
+        
+        self.inspector = self.findChild(propertysetinspector.PropertySetInspector, "inspector")
+
+class CreateWidgetDockWidget(QDockWidget):
+    def __init__(self, parent):
+        super(CreateWidgetDockWidget, self).__init__()
+        
+        self.parent = parent
+        
+        self.ui = ui.layouteditor.createwidgetdockwidget.Ui_CreateWidgetDockWidget()
+        self.ui.setupUi(self)
+        
+        self.tree = self.findChild(QTreeWidget, "tree")
+        
+    def populate(self):
+        self.tree.clear()
+        
+        wl = self.parent.parent.mainWindow.ceguiContainerWidget.getAvailableWidgetsBySkin()
+        
+        for skin, widgets in wl.iteritems():
+            skinItem = None
+            
+            if skin == "__no_skin__":
+                skinItem = self.tree.invisibleRootItem()
+            else:
+                skinItem = QTreeWidgetItem()
+                skinItem.setText(0, skin)
+                self.tree.addTopLevelItem(skinItem)
+                
+            # skinItem now represents the skin node, we add all widgets in that skin to it
+            
+            for widget in widgets:
+                widgetItem = QTreeWidgetItem()
+                widgetItem.setText(0, widget)
+                skinItem.addChild(widgetItem)
 
 class EditingScene(cegui.GraphicsScene):
     def __init__(self, parent):
@@ -110,8 +144,9 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         self.parent = parent
         self.rootWidget = None
         
-        self.propertiesDockWidget = PropertiesDockWidget(self)
         self.hierarchyDockWidget = HierarchyDockWidget(self)
+        self.propertiesDockWidget = PropertiesDockWidget(self)
+        self.createWidgetDockWidget = CreateWidgetDockWidget(self)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -121,6 +156,7 @@ class VisualEditing(QWidget, mixedtab.EditMode):
 
     def initialise(self, rootWidget):
         self.replaceRootWidget(rootWidget)
+        self.createWidgetDockWidget.populate()
     
     def replaceRootWidget(self, newRoot):
         oldRoot = self.rootWidget
@@ -142,14 +178,16 @@ class VisualEditing(QWidget, mixedtab.EditMode):
         
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
 
-        self.propertiesDockWidget.setEnabled(True)
         self.hierarchyDockWidget.setEnabled(True)
+        self.propertiesDockWidget.setEnabled(True)
+        self.createWidgetDockWidget.setEnabled(True)
 
         super(VisualEditing, self).showEvent(event)
     
     def hideEvent(self, event):
-        self.propertiesDockWidget.setEnabled(False)
         self.hierarchyDockWidget.setEnabled(False)
+        self.propertiesDockWidget.setEnabled(False)
+        self.createWidgetDockWidget.setEnabled(False)
         
         # this is sometimes called even before the parent is initialised
         if hasattr(self.parent, "mainWindow"):

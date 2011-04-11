@@ -137,20 +137,21 @@ class TabbedEditor(object):
         else:
             self.mainWindow.tabs.setTabIcon(self.mainWindow.tabs.indexOf(self.tabWidget), QIcon())
 
-    def saveAs(self, targetPath):
+    def saveAs(self, targetPath, updateCurrentPath = True):
         """Causes the tabbed editor to save all it's progress to the file.
         targetPath should be absolute file path.
         """
         
-        # changes current path to the path we saved to
-        self.filePath = targetPath
+        if updateCurrentPath:
+            # changes current path to the path we saved to
+            self.filePath = targetPath
+            
+            # update tab text
+            self.tabLabel = os.path.basename(self.filePath)
         
-        # update tab text
-        self.tabLabel = os.path.basename(self.filePath)
-        
-        # hasattr because this might be called even before initialise is called!
-        if hasattr(self, "mainWindow"):
-            self.mainWindow.tabs.setTabText(self.mainWindow.tabs.indexOf(self.tabWidget), self.tabLabel)
+            # hasattr because this might be called even before initialise is called!
+            if hasattr(self, "mainWindow"):
+                self.mainWindow.tabs.setTabText(self.mainWindow.tabs.indexOf(self.tabWidget), self.tabLabel)
 
     def save(self):
         """Saves all progress to the same file we have opened at the moment
@@ -180,14 +181,19 @@ class TabbedEditor(object):
         # the state of the tabbed editor should be valid at this point
         
     def undo(self):
+        """Called by the mainwindow whenever undo is requested"""
         pass
         
     def redo(self):
+        """Called by the mainwindow whenever redo is requested"""
         pass
     
     def getUndoStack(self):
         """Returns UndoStack or None is the tabbed editor doesn't have undo stacks.
         This is useful for QUndoView
+        
+        Note: If you use UndoStack in your tabbed editor, inherit from UndoStackTabbedEditor
+              below, it will save you a lot of work (synchronising all the actions and their texts, etc..)
         """
         
         return None
@@ -234,8 +240,8 @@ class UndoStackTabbedEditor(TabbedEditor):
     def hasChanges(self):
         return not self.undoStack.isClean()
 
-    def saveAs(self, targetPath):
-        super(UndoStackTabbedEditor, self).saveAs(targetPath)
+    def saveAs(self, targetPath, updateCurrentPath = True):
+        super(UndoStackTabbedEditor, self).saveAs(targetPath, updateCurrentPath)
         
         self.undoStack.setClean()
         

@@ -42,6 +42,9 @@ import about
 class MainWindow(QMainWindow):
     """The central window of the application"""
     
+    # TODO: This class has grown too much, I think it has too many responsibilities
+    #       and refactoring will be needed in the future.
+    
     def __init__(self, app):
         super(MainWindow, self).__init__()
         

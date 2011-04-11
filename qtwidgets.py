@@ -19,6 +19,10 @@
 from PySide.QtGui import *
 import ui.widgets.filelineedit
 
+# Contains reusable widgets that I haven't found in Qt for some reason
+
+# TODO: ColourButton
+
 class FileLineEdit(QWidget):
     ExistingFileMode = 1
     NewFileMode = 2

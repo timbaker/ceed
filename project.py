@@ -40,6 +40,9 @@ class Item(QStandardItem):
     being expanded/collapsed like folders
     """
     File = 2
+    """Folder is a group of files. Project folders don't necessarily have to have
+    a counterpart on the HDD, they could be virtual.
+    """
     Folder = 3
 
     itemType = property(lambda self: self.data(Qt.UserRole + 1),
@@ -84,10 +87,14 @@ class Item(QStandardItem):
         else:
             pass
         
-        # PySide bug: PySide doesn't take ownership so we have to hack this around like this
+        # PySide bug: PySide doesn't take ownership so we have to hack this around like this :-(
         #             hopefully this gets fixed.
         #
         #             NASTY NASTY NASTY
+        #
+        # TODO: This means that whenever you move project items around, you create leaks that exist
+        #       for the entire time of execution of the app!
+        
         if hasattr(self, "returnedClones"):
             self.returnedClones.append(ret)
         else:
@@ -638,6 +645,9 @@ class ProjectManager(QDockWidget):
                 print "%i selected project items are unknown and can't be deleted" % (len(selectedIndices))
         
 class NewProjectDialog(QDialog):
+    """Dialog responsible for creation of entirely new projects.
+    """
+    
     def __init__(self):
         super(NewProjectDialog, self).__init__()
         
@@ -659,6 +669,9 @@ class NewProjectDialog(QDialog):
         return ret
 
 class ProjectSettingsDialog(QDialog):
+    """Dialog able to change various project settings
+    """
+    
     def __init__(self, project):
         super(ProjectSettingsDialog, self).__init__()
         
@@ -694,6 +707,9 @@ class ProjectSettingsDialog(QDialog):
         self.layoutsPath.setText(project.getAbsolutePathOf(project.layoutsPath))
         
     def apply(self, project):
+        """Applies values from this dialog to given project
+        """
+        
         project.name = self.projectName.text()
         absBaseDir = os.path.normpath(os.path.abspath(self.baseDirectory.text()))
         project.baseDirectory = os.path.relpath(absBaseDir, os.path.dirname(project.projectFilePath))

@@ -75,14 +75,17 @@ class LayoutTabbedEditor(mixedtab.MixedTabbedEditor):
         self.visual.hierarchyDockWidget.setVisible(True)
         self.mainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.visual.propertiesDockWidget)
         self.visual.propertiesDockWidget.setVisible(True)
+        self.mainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.visual.createWidgetDockWidget)
+        self.visual.createWidgetDockWidget.setVisible(True)
         
     def deactivate(self):
         self.mainWindow.removeDockWidget(self.visual.hierarchyDockWidget)
         self.mainWindow.removeDockWidget(self.visual.propertiesDockWidget)
+        self.mainWindow.removeDockWidget(self.visual.createWidgetDockWidget)
         
         super(LayoutTabbedEditor, self).deactivate()
         
-    def saveAs(self, targetPath):
+    def saveAs(self, targetPath, updateCurrentPath = True):
         #xmlmode = self.currentWidget() == self.xml
         
         # if user saved in xml mode, we process the xml by propagating it to visual
@@ -98,7 +101,7 @@ class LayoutTabbedEditor(mixedtab.MixedTabbedEditor):
         #tree = ElementTree.ElementTree(rootElement)
         #tree.write(targetPath, "utf-8")
         
-        super(LayoutTabbedEditor, self).saveAs(targetPath)
+        super(LayoutTabbedEditor, self).saveAs(targetPath, updateCurrentPath)
 
 class LayoutTabbedEditorFactory(tab.TabbedEditorFactory):
     def canEditFile(self, filePath):

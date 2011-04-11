@@ -20,7 +20,7 @@ import sys
 import os
 
 from PySide.QtCore import Qt, QTimer, QPoint
-from PySide.QtGui import QApplication, QSplashScreen, QPixmap, QMessageBox
+from PySide.QtGui import QApplication, QSplashScreen, QPixmap
 
 import compileuifiles
 
@@ -29,7 +29,6 @@ def fixCwd():
     
     # this is necessary when starting the app via shortcuts
     
-    # atrocious and unholy!
     def getInstallDir():
         import fake
         
@@ -44,6 +43,12 @@ def fixCwd():
     os.chdir(getInstallDir())
 
 class SplashScreen(QSplashScreen):
+    """A fancy splashscreen that fades out when user moves mouse over it or clicks it.
+    """
+    
+    # TODO: It's modal and when you move the mouse over the application, it doesn't hide
+    #       itself/fade out so user always has to me the mouse over the splashscreen
+    
     def __init__(self):
         super(SplashScreen, self).__init__(QPixmap("images/splashscreen.png"))
         
@@ -86,6 +91,9 @@ class SplashScreen(QSplashScreen):
         self.update()
 
 class Application(QApplication):
+    """The central application class
+    """
+    
     def __init__(self, argv):
         super(Application, self).__init__(argv)
         
@@ -120,7 +128,6 @@ def main():
     fixCwd()
     
     app = Application(sys.argv)
-    
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

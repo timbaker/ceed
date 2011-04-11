@@ -103,7 +103,7 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
         
         super(ImagesetTabbedEditor, self).deactivate()
         
-    def saveAs(self, targetPath):
+    def saveAs(self, targetPath, updateCurrentPath = True):
         xmlmode = self.currentWidget() == self.xml
         
         # if user saved in xml mode, we process the xml by propagating it to visual
@@ -119,7 +119,7 @@ class ImagesetTabbedEditor(mixedtab.MixedTabbedEditor):
         tree = ElementTree.ElementTree(rootElement)
         tree.write(targetPath, "utf-8")
         
-        super(ImagesetTabbedEditor, self).saveAs(targetPath)
+        super(ImagesetTabbedEditor, self).saveAs(targetPath, updateCurrentPath)
 
 class ImagesetTabbedEditorFactory(tab.TabbedEditorFactory):
     def canEditFile(self, filePath):

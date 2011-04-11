@@ -23,6 +23,14 @@ from PySide.QtGui import QDialog, QTextBrowser
 import ui.exceptiondialog
 
 class ExceptionDialog(QDialog):
+    """This is a dialog that gets shown whenever an exception is thrown and
+    isn't caught. This is realised via duck overriding the sys.excepthook.
+    """
+    
+    # Long term TODO:
+    # Add an option to pack all the relevant data and error messages to a zip
+    # file for easier to reproduce bug reports.
+    
     def __init__(self, exc_type, exc_message, exc_traceback):
         super(ExceptionDialog, self).__init__()
         
@@ -45,6 +53,11 @@ class ExceptionDialog(QDialog):
                                  % (exc_message, tracebackStr))
 
 class ErrorHandler(object):
+    """This class is responsible for all error handling. It only handles exceptions for now.
+    """
+    
+    # TODO: handle stderr messages as soft errors
+    
     def __init__(self, mainWindow):
         self.mainWindow = mainWindow
         
@@ -61,5 +74,3 @@ class ErrorHandler(object):
             
             # we also call the original excepthook which will just output things to stderr
             sys.__excepthook__(exc_type, exc_message, exc_traceback)
-            
-            

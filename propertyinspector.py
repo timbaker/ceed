@@ -23,6 +23,8 @@ from xml.etree import ElementTree
 
 import math
 
+# TODO: I am not entirely happy with this module and will likely rewrite it a bit
+
 class PropertyInspectorMapping(object):
     """Maps a CEGUI::Property (by origin and name) to a PropertyInspector to allow
     its viewing and editing"""
