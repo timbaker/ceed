@@ -85,6 +85,11 @@ class MainWindow(QMainWindow):
         self.undoViewer.setVisible(False)
         self.addDockWidget(Qt.RightDockWidgetArea, self.undoViewer)
         
+        self.menuPanels = self.findChild(QMenu, "menuPanels")
+        self.menuPanels.addAction(self.projectManager.toggleViewAction())
+        self.menuPanels.addAction(self.fileSystemBrowser.toggleViewAction())
+        self.menuPanels.addAction(self.undoViewer.toggleViewAction())
+        
         self.connectActions()
         self.connectSignals()
         
@@ -143,16 +148,7 @@ class MainWindow(QMainWindow):
         
     def connectSignals(self):
         self.projectManager.fileOpenRequested.connect(self.slot_openFile)
-        self.findChild(QAction, "actionProjectManagerVisible").toggled.connect(self.projectManager.setVisible)
-        self.projectManager.visibilityChanged.connect(self.findChild(QAction, "actionProjectManagerVisible").setChecked)
-        
         self.fileSystemBrowser.fileOpenRequested.connect(self.slot_openFile)
-        
-        self.findChild(QAction, "actionFileSystemBrowserVisible").toggled.connect(self.fileSystemBrowser.setVisible)
-        self.fileSystemBrowser.visibilityChanged.connect(self.findChild(QAction, "actionFileSystemBrowserVisible").setChecked)
-
-        self.findChild(QAction, "actionUndoViewerVisible").toggled.connect(self.undoViewer.setVisible)
-        self.undoViewer.visibilityChanged.connect(self.findChild(QAction, "actionUndoViewerVisible").setChecked)
 
     def openProject(self, path):
         assert(not self.project)

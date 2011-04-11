@@ -73,7 +73,7 @@ class LayoutTabbedEditor(mixedtab.MixedTabbedEditor):
         
         self.mainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.visual.hierarchyDockWidget)
         self.visual.hierarchyDockWidget.setVisible(True)
-        self.mainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.visual.propertiesDockWidget)
+        self.mainWindow.addDockWidget(Qt.RightDockWidgetArea, self.visual.propertiesDockWidget)
         self.visual.propertiesDockWidget.setVisible(True)
         self.mainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.visual.createWidgetDockWidget)
         self.visual.createWidgetDockWidget.setVisible(True)

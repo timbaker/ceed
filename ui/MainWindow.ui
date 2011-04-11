@@ -116,10 +116,6 @@
     <property name="title">
      <string>Panels</string>
     </property>
-    <addaction name="actionProjectManagerVisible"/>
-    <addaction name="actionFileSystemBrowserVisible"/>
-    <addaction name="actionUndoViewerVisible"/>
-    <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuProject">
     <property name="title">
@@ -263,20 +259,6 @@
     <string>Ctrl+Y</string>
    </property>
   </action>
-  <action name="actionProjectManagerVisible">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Project Manager</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+P</string>
-   </property>
-  </action>
   <action name="actionSaveProject">
    <property name="icon">
     <iconset>
@@ -284,20 +266,6 @@
    </property>
    <property name="text">
     <string>Save Project</string>
-   </property>
-  </action>
-  <action name="actionFileSystemBrowserVisible">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="text">
-    <string>File System Browser</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+B</string>
    </property>
   </action>
   <action name="actionProjectSettings">
@@ -339,14 +307,6 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
-   </property>
-  </action>
-  <action name="actionUndoViewerVisible">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Undo Viewer</string>
    </property>
   </action>
  </widget>
