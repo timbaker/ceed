@@ -35,6 +35,8 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         self.setLayout(layout)
 
     def activate(self):
+        super(LayoutPreviewer, self).activate()
+
         assert(self.rootWidget is None)
         
         # we have to make the context the current context to ensure textures are fine
@@ -44,9 +46,11 @@ class LayoutPreviewer(QWidget, mixedtab.EditMode):
         self.rootWidget = self.parent.visual.rootWidget.clone()
         PyCEGUI.System.getSingleton().setGUISheet(self.rootWidget)
         
-    def deactivate(self):
+    def deactivate(self):    
         PyCEGUI.WindowManager.getSingleton().destroyWindow(self.rootWidget)
         self.rootWidget = None
+
+        return super(LayoutPreviewer, self).deactivate()
 
     def showEvent(self, event):
         self.parent.mainWindow.ceguiContainerWidget.activate(self, self.parent.filePath)

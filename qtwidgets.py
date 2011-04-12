@@ -68,4 +68,3 @@ class FileLineEdit(QWidget):
         
         if path != "":    
             self.lineEdit.setText(path)
-        

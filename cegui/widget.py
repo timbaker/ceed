@@ -19,9 +19,11 @@
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+import resizable
+
 # This module contains helping classes for CEGUI widget handling
 
-class Manipulator(QGraphicsRectItem):
+class Manipulator(resizable.ResizableGraphicsRectItem):
     """
     This is a rectangle that is synchronised with given CEGUI widget,
     it provides moving and resizing functionality
@@ -38,6 +40,7 @@ class Manipulator(QGraphicsRectItem):
         
         self.setFlags(QGraphicsItem.ItemIsFocusable | 
                       QGraphicsItem.ItemIsSelectable |
+                      QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptsHoverEvents(True)
         
@@ -102,8 +105,6 @@ class Manipulator(QGraphicsRectItem):
             if value:
                 self.widget.moveToFront()
                 self.moveToFront()
-                
-            return value
         
         return super(Manipulator, self).itemChange(change, value)
         

@@ -65,10 +65,13 @@ class XMLEditing(xmledit.XMLEditWidget, mixedtab.EditMode):
         self.parent.visual.replaceRootWidget(newRoot)
     
     def activate(self):
+        super(XMLEditing, self).activate()
         self.refreshFromVisual()
         
     def deactivate(self):
         self.propagateChangesToVisual()
+        
+        return super(XMLEditing, self).deactivate()
     
     def slot_contentsChange(self, position, charsRemoved, charsAdded):
         #if not self.ignoreUndoCommands:

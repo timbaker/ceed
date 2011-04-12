@@ -547,6 +547,9 @@ class ContainerWidget(QWidget):
             parser.setProperty("SchemaDefaultResourceGroup", "schemas")
         
     def syncToProject(self, project):
+        progress = QProgressDialog("Cleaning embedded CEGUI...", "", 0, 3, self)
+        progress.setWindowModality(Qt.WindowModal)
+        
         self.ensureCEGUIIsInitialised()
         self.makeGLContextCurrent()
         
@@ -557,13 +560,21 @@ class ContainerWidget(QWidget):
         #PyCEGUI.WidgetLookManager.getSingleton().destroyAll()
         PyCEGUI.WindowManager.getSingleton().destroyAllWindows()
         
+        progress.setLabelText("Setting resource paths...")
+        progress.setValue(1)
+        
         self.setResourceGroupDirectory("imagesets", project.getAbsolutePathOf(project.imagesetsPath))
         self.setResourceGroupDirectory("fonts", project.getAbsolutePathOf(project.fontsPath))
         self.setResourceGroupDirectory("schemes", project.getAbsolutePathOf(project.schemesPath))
         self.setResourceGroupDirectory("looknfeels", project.getAbsolutePathOf(project.looknfeelsPath))
         self.setResourceGroupDirectory("layouts", project.getAbsolutePathOf(project.layoutsPath))
         
+        progress.setLabelText("Recreating all schemes...")
+        progress.setValue(2)
+        
         self.createAllSchemes()
+        
+        progress.reset()
         
     def createAllSchemes(self):
         # I think just creating the schemes should be alright, schemes will

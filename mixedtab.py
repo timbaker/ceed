@@ -55,9 +55,9 @@ class ModeSwitchCommand(commands.UndoCommand):
     def redo(self):
         # to avoid multiple event firing
         if self.parent.currentIndex() != self.newTabIndex:
-            self.parent.ignoreCurrentChanged = True
+            self.parent.ignoreCurrentChangedForUndo = True
             self.parent.setCurrentIndex(self.newTabIndex)
-            self.parent.ignoreCurrentChanged = False
+            self.parent.ignoreCurrentChangedForUndo = False
         
         super(ModeSwitchCommand, self).redo()
 
@@ -74,6 +74,8 @@ class EditMode(object):
         """This is called whenever this edit mode is activated (user clicked on the tab button
         representing it). It's not called when user switches from a different file tab whilst
         this tab was already active when user was switching from this file tab to another one!
+        
+        Activation can't be canceled and must always happen when requested!
         """
         pass
     
@@ -82,8 +84,12 @@ class EditMode(object):
         representing another mode). It's not called when user switches to this file tab from another
         file tab and this edit mode was already active before user switched from the file tab to another
         file tab.
+        
+        if this returns True, all went well
+        if this returns False, the action is terminated and the current edit mode stays in place
         """
-        pass
+        
+        return True
 
 class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
     """This class represents tabbed editor that has little tabs on the bottom
@@ -108,9 +114,11 @@ class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
         
         # will be -1, that means no tabs are selected
         self.currentTabIndex = self.currentIndex()
+        # when canceling tab transfer we have to switch back and avoid unnecessary deactivate/activate cycle
+        self.ignoreCurrentChanged = False
         # to avoid unnecessary undo command pushes we ignore currentChanged if we are
         # inside ModeChangeCommand.undo or redo
-        self.ignoreCurrentChanged = False
+        self.ignoreCurrentChangedForUndo = False
         
     def initialise(self, mainWindow):
         super(MixedTabbedEditor, self).initialise(mainWindow)
@@ -124,17 +132,26 @@ class MixedTabbedEditor(tab.UndoStackTabbedEditor, QTabWidget):
         assert(self.currentTabIndex != -1)
         
     def slot_currentChanged(self, newTabIndex):
-        if not self.ignoreCurrentChanged:
-            cmd = ModeSwitchCommand(self, self.currentTabIndex, newTabIndex)
-            self.undoStack.push(cmd)
+        if self.ignoreCurrentChanged:
+            return
         
         oldTab = self.widget(self.currentTabIndex)
         newTab = self.widget(newTabIndex)
 
         if oldTab:
-            oldTab.deactivate()
+            if not oldTab.deactivate():
+                self.ignoreCurrentChanged = True
+                self.setCurrentWidget(oldTab)
+                self.ignoreCurrentChanged = False
+                
+                return
         
         if newTab:
             newTab.activate()
         
         self.currentTabIndex = newTabIndex
+
+        if not self.ignoreCurrentChangedForUndo:
+            cmd = ModeSwitchCommand(self, self.currentTabIndex, newTabIndex)
+            self.undoStack.push(cmd)
+        

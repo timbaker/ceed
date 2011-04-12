@@ -16,6 +16,15 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
+try:
+    import psyco
+    #psyco.log()
+    #psyco.profile()
+    psyco.full()
+
+except:
+    print "no psyco found, running without optimisations"
+
 import sys
 import os
 
