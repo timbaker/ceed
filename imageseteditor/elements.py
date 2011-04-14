@@ -402,6 +402,8 @@ class ImagesetEntry(QGraphicsPixmapItem):
         for imageEntry in self.imageEntries:
             imageEntry.setPos(imageEntry.pos())
             imageEntry.updateDockWidget()
+            
+        self.parent.refreshSceneRect()
     
     def getAbsoluteImageFile(self):
         return os.path.join(os.path.dirname(self.parent.parent.filePath), self.imageFile)

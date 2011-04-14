@@ -389,17 +389,19 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
     def initialise(self, rootElement):
         self.loadImagesetEntryFromElement(rootElement)
         
+    def refreshSceneRect(self):
+        boundingRect = self.imagesetEntry.boundingRect()
+        boundingRect.adjust(-100, -100, 100, 100)
+        self.scene.setSceneRect(boundingRect)
+        
     def loadImagesetEntryFromElement(self, element):
         self.scene.clear()
         
         self.imagesetEntry = elements.ImagesetEntry(self)
         self.imagesetEntry.loadFromElement(element)
-        
-        boundingRect = self.imagesetEntry.boundingRect()
-        boundingRect.adjust(-100, -100, 100, 100)
-        self.scene.setSceneRect(boundingRect)
-        
         self.scene.addItem(self.imagesetEntry)
+
+        self.refreshSceneRect()
         
         self.dockWidget.setImagesetEntry(self.imagesetEntry)
         self.dockWidget.refresh()

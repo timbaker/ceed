@@ -150,7 +150,9 @@ class GraphicsScene(QGraphicsScene):
         
         # 20 msec after rendering is finished, we mark this as dirty to force a rerender
         # this seems to be a good compromise
-        QTimer.singleShot(20, self.update)
+        #QTimer.singleShot(20, self.update)
+        
+        self.update()
 
 class GraphicsView(QGraphicsView):
     """This is a final class, not suitable for subclassing. This views given scene

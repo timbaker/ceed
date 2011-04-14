@@ -42,9 +42,12 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
                       QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
-        self.setAcceptsHoverEvents(True)
         
         self.setPen(QPen(Qt.GlobalColor.transparent))
+        
+        transform = QTransform()
+        #transform.rotate(30, Qt.ZAxis)
+        self.setTransform(transform)
         
         self.widget = widget
         self.updateFromWidgetData()
@@ -107,14 +110,3 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
                 self.moveToFront()
         
         return super(Manipulator, self).itemChange(change, value)
-        
-    def hoverEnterEvent(self, event):
-        super(Manipulator, self).hoverEnterEvent(event)
-        
-        self.setPen(QPen(QColor(0, 255, 0, 127)))
-        
-    def hoverLeaveEvent(self, event):
-        self.setPen(QPen(Qt.GlobalColor.transparent))
-
-        super(Manipulator, self).hoverLeaveEvent(event)
-        
