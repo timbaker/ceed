@@ -33,6 +33,10 @@ class ResizingHandle(QGraphicsRectItem):
         self.ignoreGeometryChanges = False
         self.mouseOver = False
 
+    def adjustParentRect(self, delta_x1, delta_y1, delta_x2, delta_y2):
+        parent = self.parentItem()
+        parent.setRect(parent.rect().adjusted(delta_x1, delta_y1, delta_x2, delta_y2))
+
     def unselectAllSiblingHandles(self):
         assert(self.parentItem())
         
@@ -47,8 +51,6 @@ class ResizingHandle(QGraphicsRectItem):
         if change == QGraphicsItem.ItemPositionChange:
             if not self.parentItem().resizeInProgress and not self.ignoreGeometryChanges:
                 self.parentItem().resizeInProgress = True
-                self.parentItem().sizeBox.setPen(self.parentItem().sizeBoxPenWhileResizing())
-                self.parentItem().sizeBox.setZValue(1)
                 self.parentItem().hideAllHandles(excluding = self)
                 self.parentItem().setPen(self.parentItem().penWhileResizing())
                 
@@ -63,15 +65,13 @@ class ResizingHandle(QGraphicsRectItem):
         if self.parentItem().resizeInProgress:
             # resize was in progress and just ended
             self.parentItem().resizeInProgress = False
-            self.parentItem().sizeBox.setPen(self.parentItem().sizeBoxNormalPen())
-            self.parentItem().sizeBox.setZValue(0)
             self.parentItem().showAllHandles(excluding = self)
             self.parentItem().setPen(self.parentItem().hoverPen() if self.parentItem().mouseOver else self.parentItem().normalPen())
             
             oldPos = self.parentItem().resizeOldPos
             oldRect = self.parentItem().resizeOldRect
-            newPos = self.parentItem().pos() + self.parentItem().sizeBox.pos()
-            newRect = self.parentItem().sizeBox.rect()
+            newPos = self.parentItem().pos() + self.parentItem().rect().topLeft()
+            newRect = QRectF(0, 0, self.parentItem().rect().width(), self.parentItem().rect().height())
             
             if oldPos != newPos or oldRect != newRect:
                 self.parentItem().notifyResizeFinished(oldPos, oldRect, newPos, newRect)
@@ -106,14 +106,14 @@ class TopEdgeResizingHandle(EdgeResizingHandle):
     def __init__(self, parent):
         super(TopEdgeResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeVerCursor)
+        
     def itemChange(self, change, value):
         ret = super(TopEdgeResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.y() - self.pos().y()
-
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, 0, -delta))
-            self.parentItem().sizeBox.setPos(self.parentItem().sizeBox.pos() + QPointF(0, delta))
+            self.adjustParentRect(0, delta, 0, 0)
             
             return QPointF(self.pos().x(), value.y())
             
@@ -123,13 +123,14 @@ class BottomEdgeResizingHandle(EdgeResizingHandle):
     def __init__(self, parent):
         super(BottomEdgeResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeVerCursor)
+        
     def itemChange(self, change, value):
         ret = super(BottomEdgeResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.y() - self.pos().y()
-
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, 0, delta))
+            self.adjustParentRect(0, 0, 0, delta)
             
             return QPointF(self.pos().x(), value.y())
             
@@ -139,14 +140,14 @@ class LeftEdgeResizingHandle(EdgeResizingHandle):
     def __init__(self, parent):
         super(LeftEdgeResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeHorCursor)
+        
     def itemChange(self, change, value):
         ret = super(LeftEdgeResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.x() - self.pos().x()
-
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, -delta, 0))
-            self.parentItem().sizeBox.setPos(self.parentItem().sizeBox.pos() + QPointF(delta, 0))
+            self.adjustParentRect(delta, 0, 0, 0)
             
             return QPointF(value.x(), self.pos().y())
             
@@ -156,13 +157,14 @@ class RightEdgeResizingHandle(EdgeResizingHandle):
     def __init__(self, parent):
         super(RightEdgeResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeHorCursor)
+        
     def itemChange(self, change, value):
         ret = super(RightEdgeResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.x() - self.pos().x()
-
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, delta, 0))
+            self.adjustParentRect(0, 0, delta, 0)
             
             return QPointF(value.x(), self.pos().y())
             
@@ -188,16 +190,16 @@ class TopRightCornerResizingHandle(CornerResizingHandle):
     def __init__(self, parent):
         super(TopRightCornerResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeBDiagCursor)
+        
     def itemChange(self, change, value):
         ret = super(TopRightCornerResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
+            self.adjustParentRect(0, delta_y, delta_x, 0)
 
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, delta_x, -delta_y))
-            self.parentItem().sizeBox.setPos(self.parentItem().sizeBox.pos() + QPointF(0, delta_y))
-            
             return value
             
         return ret  
@@ -206,14 +208,15 @@ class BottomRightCornerResizingHandle(CornerResizingHandle):
     def __init__(self, parent):
         super(BottomRightCornerResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeFDiagCursor)
+        
     def itemChange(self, change, value):
         ret = super(BottomRightCornerResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
-
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, delta_x, delta_y))
+            self.adjustParentRect(0, 0, delta_x, delta_y)
             
             return value
             
@@ -223,15 +226,15 @@ class BottomLeftCornerResizingHandle(CornerResizingHandle):
     def __init__(self, parent):
         super(BottomLeftCornerResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeBDiagCursor)
+        
     def itemChange(self, change, value):
         ret = super(BottomLeftCornerResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
-
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, -delta_x, delta_y))
-            self.parentItem().sizeBox.setPos(self.parentItem().sizeBox.pos() + QPointF(delta_x, 0))
+            self.adjustParentRect(delta_x, 0, 0, delta_y)
             
             return value
             
@@ -241,33 +244,28 @@ class TopLeftCornerResizingHandle(CornerResizingHandle):
     def __init__(self, parent):
         super(TopLeftCornerResizingHandle, self).__init__(parent)
         
+        self.setCursor(Qt.SizeFDiagCursor)
+        
     def itemChange(self, change, value):
         ret = super(TopLeftCornerResizingHandle, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
-
-            self.parentItem().sizeBox.setRect(self.parentItem().sizeBox.rect().adjusted(0, 0, -delta_x, -delta_y))
-            self.parentItem().sizeBox.setPos(self.parentItem().sizeBox.pos() + QPointF(delta_x, delta_y))
+            self.adjustParentRect(delta_x, delta_y, 0, 0)
             
             return value
             
         return ret
 
-
 class ResizableGraphicsRectItem(QGraphicsRectItem):
-    def __init__(self):
-        super(ResizableGraphicsRectItem, self).__init__()
+    def __init__(self, parentItem = None):
+        super(ResizableGraphicsRectItem, self).__init__(parentItem)
         
         self.setFlags(QGraphicsItem.ItemSendsGeometryChanges)
         
         self.setAcceptsHoverEvents(True)
         self.mouseOver = False
-
-        self.sizeBox = QGraphicsRectItem(self)
-        self.sizeBox.setFlags(QGraphicsItem.ItemStacksBehindParent)
-        self.sizeBox.setPen(self.sizeBoxNormalPen())
         
         self.topEdgeHandle = TopEdgeResizingHandle(self)
         self.bottomEdgeHandle = BottomEdgeResizingHandle(self)
@@ -283,17 +281,23 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         self.handlesCachedFor = None
         self.resizeInProgress = False
         
-        self.setHandleSize(20)
+        self.hideAllHandles()
+        self.setHandleSize(15)
     
     def normalPen(self):
         ret = QPen()
-        ret.setColor(QColor(Qt.transparent))
+        ret.setColor(QColor(Qt.lightGray))
         
         return ret
     
     def hoverPen(self):
         ret = QPen()
         ret.setColor(QColor(0, 127, 0, 255))
+        
+        return ret
+    
+    def penWhileResizing(self):
+        ret = QPen(QColor(255, 0, 0, 255))
         
         return ret
     
@@ -323,32 +327,12 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         
         return ret    
     
-    def penWhileResizing(self):
-        ret = QPen()
-        ret.setColor(QColor(Qt.transparent))
-        
-        return ret
-    
-    def sizeBoxNormalPen(self):
-        ret = QPen()
-        ret.setColor(QColor(Qt.transparent))
-        
-        return ret
-    
-    def sizeBoxPenWhileResizing(self):
-        ret = QPen(QColor(255, 0, 0, 255))
-        
-        return ret
-    
     def setHandleSize(self, size):
         self.handleSize = size
         self.handlesDirty = True
         
     def setRect(self, rect):
         super(ResizableGraphicsRectItem, self).setRect(rect)
-
-        self.sizeBox.setPos(QPointF(0, 0))
-        self.sizeBox.setRect(rect)
 
         self.handlesDirty = True
         self.ensureHandlesUpdated()

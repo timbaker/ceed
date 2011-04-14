@@ -22,6 +22,7 @@ from PySide.QtCore import *
 from xml.etree import ElementTree
 import os
 
+import resizable
 
 class ImageLabel(QGraphicsTextItem):
     """Text item showing image's label when the image is hovered or selected.
@@ -147,9 +148,9 @@ class ImageEntry(QGraphicsRectItem):
     ypos = property(lambda self: int(self.pos().y()),
                     lambda self, value: self.setPos(self.pos().x(), value))
     width = property(lambda self: int(self.rect().width()),
-                     lambda self, value: self.setRect(0, 0, value, self.height))
+                     lambda self, value: self.setRect(QRectF(0, 0, value, self.height)))
     height = property(lambda self: int(self.rect().height()),
-                      lambda self, value: self.setRect(0, 0, self.width, value))
+                      lambda self, value: self.setRect(QRectF(0, 0, self.width, value)))
     
     xoffset = property(lambda self: int(-(self.offset.pos().x() - 0.5)),
                        lambda self, value: self.offset.setX(-float(value) + 0.5))
