@@ -653,16 +653,20 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
             for selectedItem in expandedSelectedItems:
                 if isinstance(selectedItem, elements.ImageEntry):
                     if selectedItem.oldPosition:
-                        moveImageNames.append(selectedItem.name)
-                        moveImageOldPositions[selectedItem.name] = selectedItem.oldPosition
-                        moveImageNewPositions[selectedItem.name] = selectedItem.pos()
+                        # only include that if the position really changed
+                        if selectedItem.oldPosition != selectedItem.pos():
+                            moveImageNames.append(selectedItem.name)
+                            moveImageOldPositions[selectedItem.name] = selectedItem.oldPosition
+                            moveImageNewPositions[selectedItem.name] = selectedItem.pos()
                         
                     if selectedItem.resized:
-                        resizeImageNames.append(selectedItem.name)
-                        resizeImageOldPositions[selectedItem.name] = selectedItem.resizeOldPos
-                        resizeImageOldRects[selectedItem.name] = selectedItem.resizeOldRect
-                        resizeImageNewPositions[selectedItem.name] = selectedItem.pos()
-                        resizeImageNewRects[selectedItem.name] = selectedItem.rect()
+                        # only include that if the position or rect really changed
+                        if selectedItem.resizeOldPos != selectedItem.pos() or selectedItem.resizeOldRect != selectedItem.rect():
+                            resizeImageNames.append(selectedItem.name)
+                            resizeImageOldPositions[selectedItem.name] = selectedItem.resizeOldPos
+                            resizeImageOldRects[selectedItem.name] = selectedItem.resizeOldRect
+                            resizeImageNewPositions[selectedItem.name] = selectedItem.pos()
+                            resizeImageNewRects[selectedItem.name] = selectedItem.rect()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
@@ -670,9 +674,11 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
                     
                 elif isinstance(selectedItem, elements.ImageOffset):
                     if selectedItem.oldPosition:
-                        moveOffsetNames.append(selectedItem.parent.name)
-                        moveOffsetOldPositions[selectedItem.parent.name] = selectedItem.oldPosition
-                        moveOffsetNewPositions[selectedItem.parent.name] = selectedItem.pos()
+                        # only include that if the position really changed
+                        if selectedItem.oldPosition != selectedItem.pos():
+                            moveOffsetNames.append(selectedItem.parent.name)
+                            moveOffsetOldPositions[selectedItem.parent.name] = selectedItem.oldPosition
+                            moveOffsetNewPositions[selectedItem.parent.name] = selectedItem.pos()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
