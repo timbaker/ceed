@@ -43,14 +43,7 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
                       QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
-        
-        self.setPen(QPen(Qt.GlobalColor.transparent))
-        
-        #transform = QTransform()
-        #transform.rotate(40, Qt.XAxis)
-        #transform.rotate(40, Qt.ZAxis)
-        #self.setTransform(transform)
-        
+
         self.widget = widget
         self.updateFromWidgetData()
         
@@ -137,10 +130,8 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
         self.preResizeSize = self.widget.getSize()
         
         for item in self.childItems():
-            if not isinstance(item, Manipulator):
-                continue
-            
-            item.setVisible(False)
+            if isinstance(item, Manipulator):
+                item.setVisible(False)
     
     def notifyResizeProgress(self, newPos, newRect):
         super(Manipulator, self).notifyResizeProgress(newPos, newRect)
@@ -155,10 +146,8 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
                             PyCEGUI.UVector2(PyCEGUI.UDim(0, deltaSize.width()), PyCEGUI.UDim(0, deltaSize.height())))
         
         for item in self.childItems():
-            if not isinstance(item, Manipulator):
-                continue
-            
-            item.updateFromWidgetData()
+            if isinstance(item, Manipulator):
+                item.updateFromWidgetData()
         
     def notifyResizeFinished(self, newPos, newRect):
         super(Manipulator, self).notifyResizeFinished(newPos, newRect)
@@ -166,7 +155,5 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
         self.updateFromWidgetData()
         
         for item in self.childItems():
-            if not isinstance(item, Manipulator):
-                continue
-            
-            item.setVisible(True)
+            if isinstance(item, Manipulator):
+                item.setVisible(True)

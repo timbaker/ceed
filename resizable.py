@@ -87,7 +87,11 @@ class ResizingHandle(QGraphicsRectItem):
                 item.setSelected(False)
 
     def itemChange(self, change, value):
-        if change == QGraphicsItem.ItemSelectedHasChanged:
+        if change == QGraphicsItem.ItemSelectedChange:
+            if self.parentItem().isSelected():
+                return False
+            
+        elif change == QGraphicsItem.ItemSelectedHasChanged:
             self.unselectAllSiblingHandles()
         
         elif change == QGraphicsItem.ItemPositionChange:
@@ -115,7 +119,6 @@ class ResizingHandle(QGraphicsRectItem):
         if self.parentItem().resizeInProgress:
             # resize was in progress and just ended
             self.parentItem().resizeInProgress = False
-            #self.parentItem().showAllHandles(excluding = self)
             self.parentItem().setPen(self.parentItem().getHoverPen() if self.parentItem().mouseOver else self.parentItem().getNormalPen())
             
             newPos = self.parentItem().pos() + self.parentItem().rect().topLeft()
@@ -140,7 +143,7 @@ class EdgeResizingHandle(ResizingHandle):
     def __init__(self, parent):
         super(EdgeResizingHandle, self).__init__(parent)
         
-        self.setPen(self.parentItem().getEdgeResizingHandleNormalPen())
+        self.setPen(self.parentItem().getEdgeResizingHandleHiddenPen())
 
     def hoverEnterEvent(self, event):
         super(EdgeResizingHandle, self).hoverEnterEvent(event)
@@ -148,10 +151,7 @@ class EdgeResizingHandle(ResizingHandle):
         self.setPen(self.parentItem().getEdgeResizingHandleHoverPen())
         
     def hoverLeaveEvent(self, event):
-        if self.parentItem().isSelected():
-            self.setPen(self.parentItem().getEdgeResizingHandleNormalPen())
-        else:
-            self.setPen(self.parentItem().getEdgeResizingHandleHiddenPen())
+        self.setPen(self.parentItem().getEdgeResizingHandleHiddenPen())
         
         super(EdgeResizingHandle, self).hoverLeaveEvent(event)
 
@@ -263,7 +263,7 @@ class CornerResizingHandle(ResizingHandle):
     def __init__(self, parent):
         super(CornerResizingHandle, self).__init__(parent)
         
-        self.setPen(self.parentItem().getCornerResizingHandleNormalPen())
+        self.setPen(self.parentItem().getCornerResizingHandleHiddenPen())
         self.setFlags(self.flags() |
                       QGraphicsItem.ItemIgnoresTransformations)
         
@@ -280,10 +280,7 @@ class CornerResizingHandle(ResizingHandle):
         self.setPen(self.parentItem().getCornerResizingHandleHoverPen())
         
     def hoverLeaveEvent(self, event):
-        if self.parentItem().isSelected():
-            self.setPen(self.parentItem().getCornerResizingHandleNormalPen())
-        else:
-            self.setPen(self.parentItem().getCornerResizingHandleHiddenPen())
+        self.setPen(self.parentItem().getCornerResizingHandleHiddenPen())
         
         super(CornerResizingHandle, self).hoverLeaveEvent(event)
 
@@ -417,12 +414,6 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         
         return ret
     
-    def getEdgeResizingHandleNormalPen(self):
-        ret = QPen()
-        ret.setColor(QColor(0, 255, 255, 255))
-        
-        return ret
-    
     def getEdgeResizingHandleHoverPen(self):
         ret = QPen()
         ret.setColor(QColor(0, 255, 255, 255))
@@ -434,12 +425,6 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
     def getEdgeResizingHandleHiddenPen(self):
         ret = QPen()
         ret.setColor(Qt.transparent)
-        
-        return ret
-        
-    def getCornerResizingHandleNormalPen(self):
-        ret = QPen()
-        ret.setColor(QColor(Qt.transparent))
         
         return ret
     
@@ -492,15 +477,11 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
                     
                 elif isinstance(item, CornerResizingHandle):
                     item.setPen(self.getCornerResizingHandleHiddenPen())
-     
-    def showAllHandles(self, excluding = None):
+    
+    def unselectAllHandles(self):
         for item in self.childItems():
-            if isinstance(item, ResizingHandle) and item is not excluding and not item.mouseOver:
-                if isinstance(item, EdgeResizingHandle):
-                    item.setPen(self.getEdgeResizingHandleNormalPen())
-                    
-                elif isinstance(item, CornerResizingHandle):
-                    item.setPen(self.getCornerResizingHandleNormalPen())
+            if isinstance(item, ResizingHandle):
+                item.setSelected(False)
         
     def ensureHandlesUpdated(self):        
         if self.handlesDirty and not self.resizeInProgress:
@@ -671,7 +652,7 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         
         if change == QGraphicsItem.ItemSelectedHasChanged:
             if value:
-                self.showAllHandles()
+                self.unselectAllHandles()
             else:
                 self.hideAllHandles()
         
