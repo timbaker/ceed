@@ -127,12 +127,11 @@ class GraphicsScene(QGraphicsScene):
                      "graphics view")
             
             return
-        
-        # ensure we don't mess with the painter
-        painter.save()
-        
+                
         containerWidget = self.views()[0].containerWidget
         containerWidget.ensureCEGUIIsInitialised()
+        
+        painter.beginNativePainting()
             
         glClearColor(0, 0, 0, 1)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -143,11 +142,10 @@ class GraphicsScene(QGraphicsScene):
         system.signalRedraw()
         system.renderGUI()
         
+        painter.endNativePainting()
+        
         # TODO: Fake time impulse for now
         system.injectTimePulse(1)
-        
-        # restore the painter in it's initial condition
-        painter.restore()
         
         # 20 msec after rendering is finished, we mark this as dirty to force a rerender
         # this seems to be a good compromise

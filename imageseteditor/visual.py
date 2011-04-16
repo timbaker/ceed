@@ -31,6 +31,27 @@ import undo
 
 import ui.imageseteditor.dockwidget
 
+class ImageEntryItemDelegate(QItemDelegate):
+    """The only reason for this is to track when we are editing.
+    
+    We need this to discard key events when editor is open.
+    TODO: Isn't there a better way to do this?
+    """
+    
+    def __init__(self):
+        super(ImageEntryItemDelegate, self).__init__()
+        self.editing = False
+        
+    def setEditorData(self, editor, index):
+        self.editing = True
+
+        super(ImageEntryItemDelegate, self).setEditorData(editor, index)
+    
+    def setModelData(self, editor, model, index):
+        super(ImageEntryItemDelegate, self).setModelData(editor, model, index)
+        
+        self.editing = False
+
 class ImagesetEditorDockWidget(QDockWidget):
     """Provides list of images, property editing of currently selected image and create/delete
     """
@@ -59,6 +80,7 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.filterBox.textChanged.connect(self.filterChanged)
         
         self.list = self.findChild(QListWidget, "list")
+        self.list.setItemDelegate(ImageEntryItemDelegate())
         self.list.itemSelectionChanged.connect(self.slot_itemSelectionChanged)
         self.list.itemChanged.connect(self.slot_itemChanged)
         
@@ -165,13 +187,17 @@ class ImagesetEditorDockWidget(QDockWidget):
             self.offsetY.setEnabled(True)
             
     def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Delete:
-            selection = self.parent.scene().selectedItems()
-            
-            handled = self.parent.deleteImageEntries(selection)
-            
-            if handled:
-                return True
+        # if we are editing, we should discard key events
+        # (delete means delete character, not delete image entry in this context)
+        
+        if not self.list.itemDelegate().editing:
+            if event.key() == Qt.Key_Delete:
+                selection = self.parent.scene().selectedItems()
+                
+                handled = self.parent.deleteImageEntries(selection)
+                
+                if handled:
+                    return True
         
         return super(ImagesetEditorDockWidget, self).keyReleaseEvent(event)  
 
@@ -307,10 +333,11 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
     def __init__(self, parent):
         mixedtab.EditMode.__init__(self)
         QGraphicsView.__init__(self)
-        
+                
         scene = QGraphicsScene()
         self.setScene(scene)
         
+        self.setFocusPolicy(Qt.ClickFocus)
         self.setFrameStyle(QFrame.NoFrame)
         
         # use OpenGL for view redrawing
@@ -653,6 +680,10 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
             for selectedItem in expandedSelectedItems:
                 if isinstance(selectedItem, elements.ImageEntry):
                     if selectedItem.oldPosition:
+                        if selectedItem.mouseOver:
+                            # show the label again if mouse is over because moving finished
+                            selectedItem.label.setVisible(True)
+                            
                         # only include that if the position really changed
                         if selectedItem.oldPosition != selectedItem.pos():
                             moveImageNames.append(selectedItem.name)

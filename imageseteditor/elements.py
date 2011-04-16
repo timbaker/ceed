@@ -302,6 +302,8 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         elif change == QGraphicsItem.ItemPositionChange:
             if self.potentialMove and not self.oldPosition:
                 self.oldPosition = self.pos()
+                # hide label when moving so user can see edges clearly
+                self.label.setVisible(False)
             
             newPosition = value
 
@@ -325,9 +327,19 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
 
         return super(ImageEntry, self).itemChange(change, value)
     
+    def notifyResizeStarted(self):
+        super(ImageEntry, self).notifyResizeStarted()
+        
+        # hide label when resizing so user can see edges clearly
+        self.label.setVisible(False)
+    
     def notifyResizeFinished(self, newPos, newRect):
         super(ImageEntry, self).notifyResizeFinished(newPos, newRect)
         
+        if self.mouseOver:
+            # if mouse is over we show the label again when resizing finishes
+            self.label.setVisible(True)
+            
         # mark as resized so we can pick it up in VisualEditing.mouseReleaseEvent
         self.resized = True
     
@@ -356,6 +368,14 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         self.setZValue(self.zValue() - 1)
         
         super(ImageEntry, self).hoverLeaveEvent(event)
+        
+    def paint(self, painter, option, widget):
+        super(ImageEntry, self).paint(painter, option, widget)
+        
+        # to be more visible, we draw yellow rect over the usual dashed double colour rect
+        if self.isSelected():
+            painter.setPen(QColor(255, 255, 0, 255))
+            painter.drawRect(self.rect())
         
 class ImagesetEntry(QGraphicsPixmapItem):
     def __init__(self, parent):
