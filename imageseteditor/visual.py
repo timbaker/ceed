@@ -23,8 +23,9 @@ from PySide.QtOpenGL import QGLWidget
 import fnmatch
 
 import mixedtab
-
 import qtwidgets
+import resizable
+
 import elements
 import undo
 
@@ -302,12 +303,13 @@ class ImagesetEditorDockWidget(QDockWidget):
     def slot_offsetYChanged(self, text):
         self.metaslot_propertyChanged("yoffset", text)
 
-class VisualEditing(QGraphicsView, mixedtab.EditMode):
+class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
     def __init__(self, parent):
         mixedtab.EditMode.__init__(self)
+        QGraphicsView.__init__(self)
         
-        self.scene = QGraphicsScene()
-        QGraphicsView.__init__(self, self.scene)
+        scene = QGraphicsScene()
+        self.setScene(scene)
         
         self.setFrameStyle(QFrame.NoFrame)
         
@@ -316,7 +318,7 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
         self.setViewport(QGLWidget());
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate);
         
-        self.scene.selectionChanged.connect(self.slot_selectionChanged)
+        self.scene().selectionChanged.connect(self.slot_selectionChanged)
         
         self.parent = parent
 
@@ -392,14 +394,14 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
     def refreshSceneRect(self):
         boundingRect = self.imagesetEntry.boundingRect()
         boundingRect.adjust(-100, -100, 100, 100)
-        self.scene.setSceneRect(boundingRect)
+        self.scene().setSceneRect(boundingRect)
         
     def loadImagesetEntryFromElement(self, element):
-        self.scene.clear()
+        self.scene().clear()
         
         self.imagesetEntry = elements.ImagesetEntry(self)
         self.imagesetEntry.loadFromElement(element)
-        self.scene.addItem(self.imagesetEntry)
+        self.scene().addItem(self.imagesetEntry)
 
         self.refreshSceneRect()
         
@@ -478,13 +480,13 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
         return False
         
     def cycleOverlappingImages(self):
-        selection = self.scene.selectedItems()
+        selection = self.scene().selectedItems()
             
         if len(selection) == 1:
             rect = selection[0].boundingRect()
             rect.translate(selection[0].pos())
             
-            overlappingItems = self.scene.items(rect)
+            overlappingItems = self.scene().items(rect)
         
             # first we stack everything before our current selection
             successor = None
@@ -579,7 +581,7 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
             return False
     
     def deleteSelectedImageEntries(self):
-        selection = self.scene.selectedItems()
+        selection = self.scene().selectedItems()
         
         imageEntries = []
         for item in selection:
@@ -605,7 +607,7 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
             super(VisualEditing, self).mousePressEvent(event) 
             
             if event.buttons() & Qt.LeftButton:
-                for selectedItem in self.scene.selectedItems():
+                for selectedItem in self.scene().selectedItems():
                     # selectedItem could be ImageEntry or ImageOffset!                    
                     selectedItem.potentialMove = True
                     selectedItem.oldPosition = None
@@ -624,7 +626,7 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
             offsetOldPositions = {}
             offsetNewPositions = {}
             
-            for selectedItem in self.scene.selectedItems():
+            for selectedItem in self.scene().selectedItems():
                 if isinstance(selectedItem, elements.ImageEntry):
                     if selectedItem.oldPosition:
                         imageNames.append(selectedItem.name)
@@ -720,13 +722,13 @@ class VisualEditing(QGraphicsView, mixedtab.EditMode):
         if self.dockWidget.selectionUnderway:
             return
         
-        selectedItems = self.scene.selectedItems()
+        selectedItems = self.scene().selectedItems()
         if len(selectedItems) == 1:
             if isinstance(selectedItems[0], elements.ImageEntry):
                 self.dockWidget.list.scrollToItem(selectedItems[0].listItem)
         
     def slot_toggleEditOffsets(self, enabled):
-        self.scene.clearSelection()
+        self.scene().clearSelection()
         
         self.imagesetEntry.showOffsets = enabled
         

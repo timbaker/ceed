@@ -20,6 +20,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 
 import resizable
+import PyCEGUI
 
 # This module contains helping classes for CEGUI widget handling
 
@@ -45,9 +46,10 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
         
         self.setPen(QPen(Qt.GlobalColor.transparent))
         
-        transform = QTransform()
-        #transform.rotate(30, Qt.ZAxis)
-        self.setTransform(transform)
+        #transform = QTransform()
+        #transform.rotate(40, Qt.XAxis)
+        #transform.rotate(40, Qt.ZAxis)
+        #self.setTransform(transform)
         
         self.widget = widget
         self.updateFromWidgetData()
@@ -88,6 +90,9 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
             
             item.updateFromWidgetData()
     
+        self.preResizePosition = None
+        self.preResizeSize = None
+    
     def moveToFront(self):
         parentItem = self.parentItem()
         if parentItem:
@@ -110,3 +115,58 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
                 self.moveToFront()
         
         return super(Manipulator, self).itemChange(change, value)
+    
+    def getMinSize(self):
+        if self.widget:
+            minPixelSize = PyCEGUI.CoordConverter.asAbsolute(self.widget.getMinSize(),
+                                                             PyCEGUI.System.getSingleton().getRenderer().getDisplaySize())
+            
+            return QSizeF(minPixelSize.d_x, minPixelSize.d_y)
+    
+    def getMaxSize(self):
+        if self.widget:
+            maxPixelSize = PyCEGUI.CoordConverter.asAbsolute(self.widget.getMaxSize(),
+                                                             PyCEGUI.System.getSingleton().getRenderer().getDisplaySize())
+            
+            return QSizeF(maxPixelSize.d_x, maxPixelSize.d_y)
+    
+    def notifyResizeStarted(self):
+        super(Manipulator, self).notifyResizeStarted()
+        
+        self.preResizePosition = self.widget.getPosition()
+        self.preResizeSize = self.widget.getSize()
+        
+        for item in self.childItems():
+            if not isinstance(item, Manipulator):
+                continue
+            
+            item.setVisible(False)
+    
+    def notifyResizeProgress(self, newPos, newRect):
+        super(Manipulator, self).notifyResizeProgress(newPos, newRect)
+        
+        # just absolute positioning for now (TEST)
+        deltaPos = newPos - self.resizeOldPos
+        deltaSize = newRect.size() - self.resizeOldRect.size()
+        
+        self.widget.setPosition(self.preResizePosition +
+                                PyCEGUI.UVector2(PyCEGUI.UDim(0, deltaPos.x()), PyCEGUI.UDim(0, deltaPos.y())))
+        self.widget.setSize(self.preResizeSize +
+                            PyCEGUI.UVector2(PyCEGUI.UDim(0, deltaSize.width()), PyCEGUI.UDim(0, deltaSize.height())))
+        
+        for item in self.childItems():
+            if not isinstance(item, Manipulator):
+                continue
+            
+            item.updateFromWidgetData()
+        
+    def notifyResizeFinished(self, newPos, newRect):
+        super(Manipulator, self).notifyResizeFinished(newPos, newRect)
+        
+        self.updateFromWidgetData()
+        
+        for item in self.childItems():
+            if not isinstance(item, Manipulator):
+                continue
+            
+            item.setVisible(True)

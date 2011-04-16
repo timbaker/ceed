@@ -19,6 +19,30 @@
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+class GraphicsView(QGraphicsView):
+    scaleChanged = Signal(float, float)
+    
+    def __init__(self):
+        super(GraphicsView, self).__init__()
+        
+    def scale(self, sx, sy):
+        super(GraphicsView, self).scale(sx, sy)
+        
+        self.scaleChanged(sx, sy)
+        
+    def setTransform(self, transform):
+        super(GraphicsView, self).setTransform(transform)
+        
+        sx = transform.m11()
+        sy = transform.m22()
+        
+        self.scaleChanged(sx, sy)
+        
+    def scaleChanged(self, sx, sy):
+        for item in self.scene().items():
+            if isinstance(item, ResizableGraphicsRectItem):
+                item.scaleChanged(sx, sy)
+
 class ResizingHandle(QGraphicsRectItem):
     def __init__(self, parent):
         super(ResizingHandle, self).__init__()
@@ -31,11 +55,29 @@ class ResizingHandle(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         
         self.ignoreGeometryChanges = False
+        self.ignoreTransformChanges = False
         self.mouseOver = False
+        self.currentView = None
 
     def adjustParentRect(self, delta_x1, delta_y1, delta_x2, delta_y2):
         parent = self.parentItem()
-        parent.setRect(parent.rect().adjusted(delta_x1, delta_y1, delta_x2, delta_y2))
+        newRect = parent.rect().adjusted(delta_x1, delta_y1, delta_x2, delta_y2)
+        newRect = parent.constrainResizeRect(newRect)
+        
+        #print "old rect: ", parent.rect()
+        #print "old rect adjusted: ", parent.rect().adjusted(delta_x1, delta_y1, delta_x2, delta_y2)
+        #print "min rect: ", minRect
+        #print "new rect: ", newRect
+        
+        # TODO: the rect moves as a whole when it can't be sized any less
+        #       this is probably not the behaviour we want!
+        
+        topLeftDelta = newRect.topLeft() - parent.rect().topLeft()
+        bottomRightDelta = newRect.bottomRight() - parent.rect().bottomRight()
+        
+        parent.setRect(newRect)
+        
+        return topLeftDelta.x(), topLeftDelta.y(), bottomRightDelta.x(), bottomRightDelta.y()
 
     def unselectAllSiblingHandles(self):
         assert(self.parentItem())
@@ -47,15 +89,23 @@ class ResizingHandle(QGraphicsRectItem):
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSelectedHasChanged:
             self.unselectAllSiblingHandles()
-            
-        if change == QGraphicsItem.ItemPositionChange:
+        
+        elif change == QGraphicsItem.ItemPositionChange:
             if not self.parentItem().resizeInProgress and not self.ignoreGeometryChanges:
                 self.parentItem().resizeInProgress = True
-                self.parentItem().hideAllHandles(excluding = self)
-                self.parentItem().setPen(self.parentItem().penWhileResizing())
-                
                 self.parentItem().resizeOldPos = self.parentItem().pos()
-                self.parentItem().resizeOldRect = self.parentItem().rect()                
+                self.parentItem().resizeOldRect = self.parentItem().rect()
+
+                self.parentItem().setPen(self.parentItem().getPenWhileResizing())               
+                self.parentItem().hideAllHandles(excluding = self)
+                
+                self.parentItem().notifyResizeStarted()
+                
+            if self.parentItem().resizeInProgress:
+                newPos = self.parentItem().pos() + self.parentItem().rect().topLeft()
+                newRect = QRectF(0, 0, self.parentItem().rect().width(), self.parentItem().rect().height())
+
+                self.parentItem().notifyResizeProgress(newPos, newRect)
 
         return super(ResizingHandle, self).itemChange(change, value)
     
@@ -65,16 +115,13 @@ class ResizingHandle(QGraphicsRectItem):
         if self.parentItem().resizeInProgress:
             # resize was in progress and just ended
             self.parentItem().resizeInProgress = False
-            self.parentItem().showAllHandles(excluding = self)
-            self.parentItem().setPen(self.parentItem().hoverPen() if self.parentItem().mouseOver else self.parentItem().normalPen())
+            #self.parentItem().showAllHandles(excluding = self)
+            self.parentItem().setPen(self.parentItem().getHoverPen() if self.parentItem().mouseOver else self.parentItem().getNormalPen())
             
-            oldPos = self.parentItem().resizeOldPos
-            oldRect = self.parentItem().resizeOldRect
             newPos = self.parentItem().pos() + self.parentItem().rect().topLeft()
             newRect = QRectF(0, 0, self.parentItem().rect().width(), self.parentItem().rect().height())
             
-            if oldPos != newPos or oldRect != newRect:
-                self.parentItem().notifyResizeFinished(oldPos, oldRect, newPos, newRect)
+            self.parentItem().notifyResizeFinished(newPos, newRect)
 
     def hoverEnterEvent(self, event):
         super(ResizingHandle, self).hoverEnterEvent(event)
@@ -86,19 +133,25 @@ class ResizingHandle(QGraphicsRectItem):
         
         super(ResizingHandle, self).hoverLeaveEvent(event)
 
+    def scaleChanged(self, sx, sy):
+        pass
+
 class EdgeResizingHandle(ResizingHandle):
     def __init__(self, parent):
         super(EdgeResizingHandle, self).__init__(parent)
         
-        self.setPen(self.parentItem().edgeResizingHandleNormalPen())
+        self.setPen(self.parentItem().getEdgeResizingHandleNormalPen())
 
     def hoverEnterEvent(self, event):
         super(EdgeResizingHandle, self).hoverEnterEvent(event)
         
-        self.setPen(self.parentItem().edgeResizingHandleHoverPen())
+        self.setPen(self.parentItem().getEdgeResizingHandleHoverPen())
         
     def hoverLeaveEvent(self, event):
-        self.setPen(self.parentItem().edgeResizingHandleNormalPen())
+        if self.parentItem().isSelected():
+            self.setPen(self.parentItem().getEdgeResizingHandleNormalPen())
+        else:
+            self.setPen(self.parentItem().getEdgeResizingHandleHiddenPen())
         
         super(EdgeResizingHandle, self).hoverLeaveEvent(event)
 
@@ -113,11 +166,20 @@ class TopEdgeResizingHandle(EdgeResizingHandle):
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.y() - self.pos().y()
-            self.adjustParentRect(0, delta, 0, 0)
-            
-            return QPointF(self.pos().x(), value.y())
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(0, delta, 0, 0)
+
+            return QPointF(self.pos().x(), dy1 + self.pos().y())
             
         return ret  
+
+    def scaleChanged(self, sx, sy):
+        super(TopEdgeResizingHandle, self).scaleChanged(sx, sy)
+
+        transform = self.transform()
+        transform = QTransform(1.0, transform.m12(), transform.m13(),
+                               transform.m21(), 1.0 / sy, transform.m23(),
+                               transform.m31(), transform.m32(), transform.m33())
+        self.setTransform(transform)
 
 class BottomEdgeResizingHandle(EdgeResizingHandle):
     def __init__(self, parent):
@@ -130,11 +192,20 @@ class BottomEdgeResizingHandle(EdgeResizingHandle):
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.y() - self.pos().y()
-            self.adjustParentRect(0, 0, 0, delta)
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(0, 0, 0, delta)
             
-            return QPointF(self.pos().x(), value.y())
+            return QPointF(self.pos().x(), dy2 + self.pos().y())
             
         return ret
+
+    def scaleChanged(self, sx, sy):
+        super(BottomEdgeResizingHandle, self).scaleChanged(sx, sy)
+
+        transform = self.transform()
+        transform = QTransform(1.0, transform.m12(), transform.m13(),
+                               transform.m21(), 1.0 / sy, transform.m23(),
+                               transform.m31(), transform.m32(), transform.m33())
+        self.setTransform(transform)
 
 class LeftEdgeResizingHandle(EdgeResizingHandle):
     def __init__(self, parent):
@@ -147,11 +218,20 @@ class LeftEdgeResizingHandle(EdgeResizingHandle):
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.x() - self.pos().x()
-            self.adjustParentRect(delta, 0, 0, 0)
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(delta, 0, 0, 0)
             
-            return QPointF(value.x(), self.pos().y())
+            return QPointF(dx1 + self.pos().x(), self.pos().y())
             
         return ret
+
+    def scaleChanged(self, sx, sy):
+        super(LeftEdgeResizingHandle, self).scaleChanged(sx, sy)
+
+        transform = self.transform()
+        transform = QTransform(1.0 / sx, transform.m12(), transform.m13(),
+                               transform.m21(), 1.0, transform.m23(),
+                               transform.m31(), transform.m32(), transform.m33())
+        self.setTransform(transform)
 
 class RightEdgeResizingHandle(EdgeResizingHandle):
     def __init__(self, parent):
@@ -164,25 +244,46 @@ class RightEdgeResizingHandle(EdgeResizingHandle):
 
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta = value.x() - self.pos().x()
-            self.adjustParentRect(0, 0, delta, 0)
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(0, 0, delta, 0)
             
-            return QPointF(value.x(), self.pos().y())
+            return QPointF(dx2 + self.pos().x(), self.pos().y())
             
         return ret
+
+    def scaleChanged(self, sx, sy):
+        super(RightEdgeResizingHandle, self).scaleChanged(sx, sy)
+
+        transform = self.transform()
+        transform = QTransform(1.0 / sx, transform.m12(), transform.m13(),
+                               transform.m21(), 1.0, transform.m23(),
+                               transform.m31(), transform.m32(), transform.m33())
+        self.setTransform(transform)
 
 class CornerResizingHandle(ResizingHandle):
     def __init__(self, parent):
         super(CornerResizingHandle, self).__init__(parent)
         
-        self.setPen(self.parentItem().cornerResizingHandleNormalPen())
+        self.setPen(self.parentItem().getCornerResizingHandleNormalPen())
+        self.setFlags(self.flags() |
+                      QGraphicsItem.ItemIgnoresTransformations)
+        
+        self.setZValue(1)
+
+    def counterScale(self):
+        x, y = self.getCounteringScale()
+        
+        self.setScale(x, y)
 
     def hoverEnterEvent(self, event):
         super(CornerResizingHandle, self).hoverEnterEvent(event)
         
-        self.setPen(self.parentItem().cornerResizingHandleHoverPen())
+        self.setPen(self.parentItem().getCornerResizingHandleHoverPen())
         
     def hoverLeaveEvent(self, event):
-        self.setPen(self.parentItem().cornerResizingHandleNormalPen())
+        if self.parentItem().isSelected():
+            self.setPen(self.parentItem().getCornerResizingHandleNormalPen())
+        else:
+            self.setPen(self.parentItem().getCornerResizingHandleHiddenPen())
         
         super(CornerResizingHandle, self).hoverLeaveEvent(event)
 
@@ -198,9 +299,9 @@ class TopRightCornerResizingHandle(CornerResizingHandle):
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
-            self.adjustParentRect(0, delta_y, delta_x, 0)
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(0, delta_y, delta_x, 0)
 
-            return value
+            return QPointF(dx2 + self.pos().x(), dy1 + self.pos().y())
             
         return ret  
 
@@ -216,9 +317,9 @@ class BottomRightCornerResizingHandle(CornerResizingHandle):
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
-            self.adjustParentRect(0, 0, delta_x, delta_y)
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(0, 0, delta_x, delta_y)
             
-            return value
+            return QPointF(dx2 + self.pos().x(), dy2 + self.pos().y())
             
         return ret 
 
@@ -234,9 +335,9 @@ class BottomLeftCornerResizingHandle(CornerResizingHandle):
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
-            self.adjustParentRect(delta_x, 0, 0, delta_y)
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(delta_x, 0, 0, delta_y)
             
-            return value
+            return QPointF(dx1 + self.pos().x(), dy2 + self.pos().y())
             
         return ret
 
@@ -252,9 +353,9 @@ class TopLeftCornerResizingHandle(CornerResizingHandle):
         if change == QGraphicsItem.ItemPositionChange and not self.ignoreGeometryChanges:
             delta_x = value.x() - self.pos().x()
             delta_y = value.y() - self.pos().y()
-            self.adjustParentRect(delta_x, delta_y, 0, 0)
+            dx1, dy1, dx2, dy2 = self.adjustParentRect(delta_x, delta_y, 0, 0)
             
-            return value
+            return QPointF(dx1 + self.pos().x(), dy1 + self.pos().y())
             
         return ret
 
@@ -278,57 +379,90 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         self.topLeftCornerHandle = TopLeftCornerResizingHandle(self)
         
         self.handlesDirty = True
-        self.handlesCachedFor = None
+        self.currentScaleX = 1
+        self.currentScaleY = 1
         self.resizeInProgress = False
         
         self.hideAllHandles()
-        self.setHandleSize(15)
+        
+        self.setOuterHandleSize(20)
+        self.setInnerHandleSize(15)
     
-    def normalPen(self):
+        self.setCursor(Qt.ArrowCursor)
+        self.setPen(self.getNormalPen())
+    
+    def getMinSize(self):
+        ret = QSizeF(1, 1)
+        
+        return ret
+        
+    def getMaxSize(self):
+        return None
+        
+    def getNormalPen(self):
         ret = QPen()
-        ret.setColor(QColor(Qt.lightGray))
+        ret.setColor(QColor(255, 255, 255, 255))
+        ret.setStyle(Qt.DotLine)
         
         return ret
     
-    def hoverPen(self):
+    def getHoverPen(self):
         ret = QPen()
-        ret.setColor(QColor(0, 127, 0, 255))
+        ret.setColor(QColor(0, 255, 255, 255))
         
         return ret
     
-    def penWhileResizing(self):
-        ret = QPen(QColor(255, 0, 0, 255))
+    def getPenWhileResizing(self):
+        ret = QPen(QColor(255, 0, 255, 255))
         
         return ret
     
-    def edgeResizingHandleNormalPen(self):
+    def getEdgeResizingHandleNormalPen(self):
         ret = QPen()
-        ret.setColor(QColor(0, 127, 0, 127))
+        ret.setColor(QColor(0, 255, 255, 255))
         
         return ret
     
-    def edgeResizingHandleHoverPen(self):
+    def getEdgeResizingHandleHoverPen(self):
         ret = QPen()
-        ret.setColor(QColor(0, 127, 0, 255))
+        ret.setColor(QColor(0, 255, 255, 255))
         ret.setWidth(2)
+        ret.setCosmetic(True)
+        
+        return ret
+    
+    def getEdgeResizingHandleHiddenPen(self):
+        ret = QPen()
+        ret.setColor(Qt.transparent)
         
         return ret
         
-    def cornerResizingHandleNormalPen(self):
+    def getCornerResizingHandleNormalPen(self):
         ret = QPen()
         ret.setColor(QColor(Qt.transparent))
         
         return ret
     
-    def cornerResizingHandleHoverPen(self):
+    def getCornerResizingHandleHoverPen(self):
         ret = QPen()
-        ret.setColor(QColor(0, 127, 0, 255))
+        ret.setColor(QColor(0, 255, 255, 255))
         ret.setWidth(2)
+        ret.setCosmetic(True)
         
         return ret    
     
-    def setHandleSize(self, size):
-        self.handleSize = size
+    def getCornerResizingHandleHiddenPen(self):
+        ret = QPen()
+        ret.setColor(Qt.transparent)
+        
+        return ret
+    
+    def setOuterHandleSize(self, size):
+        self.outerHandleSize = size
+        self.handlesDirty = True
+        
+    def setInnerHandleSize(self, size):
+        self.innerHandleSize = size
         self.handlesDirty = True
         
     def setRect(self, rect):
@@ -337,21 +471,40 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         self.handlesDirty = True
         self.ensureHandlesUpdated()
         
+    def constrainResizeRect(self, rect):
+        minSize = self.getMinSize()
+        maxSize = self.getMaxSize()
+        
+        if minSize:
+            minRect = QRectF(rect.center() - QPointF(0.5 * minSize.width(), 0.5 * minSize.height()), minSize)
+            rect = rect.united(minRect)
+        if maxSize:
+            maxRect = QRectF(rect.center() - QPointF(0.5 * maxSize.width(), 0.5 * maxSize.height()), maxSize)
+            rect.intersected(maxRect)
+            
+        return rect
+        
     def hideAllHandles(self, excluding = None):
         for item in self.childItems():
             if isinstance(item, ResizingHandle) and item is not excluding:
-                item.setVisible(False)
+                if isinstance(item, EdgeResizingHandle):
+                    item.setPen(self.getEdgeResizingHandleHiddenPen())
+                    
+                elif isinstance(item, CornerResizingHandle):
+                    item.setPen(self.getCornerResizingHandleHiddenPen())
      
     def showAllHandles(self, excluding = None):
         for item in self.childItems():
-            if isinstance(item, ResizingHandle) and item is not excluding:
-                item.setVisible(True)
+            if isinstance(item, ResizingHandle) and item is not excluding and not item.mouseOver:
+                if isinstance(item, EdgeResizingHandle):
+                    item.setPen(self.getEdgeResizingHandleNormalPen())
+                    
+                elif isinstance(item, CornerResizingHandle):
+                    item.setPen(self.getCornerResizingHandleNormalPen())
         
-    def ensureHandlesUpdated(self):
-        transform = self.transform()
-        
-        if (self.handlesDirty or self.handlesCachedFor != transform) and not self.resizeInProgress:
-            self.updateHandles(transform)
+    def ensureHandlesUpdated(self):        
+        if self.handlesDirty and not self.resizeInProgress:
+            self.updateHandles()
         
     def absoluteXToRelative(self, value, transform):
             x_scale = transform.m11()
@@ -367,141 +520,172 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
             # I would have to undo rotation for this to work generically   
             return value / y_scale if y_scale != 0 else 1
     
-    def updateHandles(self, transform):
+    def updateHandles(self):
         """Updates all the handles according to geometry"""
         
-        if self.rect().width() < 4 * self.absoluteXToRelative(self.handleSize, transform) or self.rect().height() < 4 * self.absoluteYToRelative(self.handleSize, transform):
+        absoluteWidth = self.currentScaleX * self.rect().width()
+        absoluteHeight = self.currentScaleY * self.rect().height()
+        
+        if absoluteWidth < 4 * self.outerHandleSize or absoluteHeight < 4 * self.outerHandleSize:
             self.topEdgeHandle.ignoreGeometryChanges = True
-            self.topEdgeHandle.setPos(0, -self.absoluteYToRelative(self.handleSize, transform))
-            self.topEdgeHandle.setRect(0, 0,
+            self.topEdgeHandle.setPos(0, 0)
+            self.topEdgeHandle.setRect(0, -self.innerHandleSize,
                                        self.rect().width(),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+                                       self.innerHandleSize)
             self.topEdgeHandle.ignoreGeometryChanges = False
             
             self.bottomEdgeHandle.ignoreGeometryChanges = True
             self.bottomEdgeHandle.setPos(0, self.rect().height())
             self.bottomEdgeHandle.setRect(0, 0,
                                        self.rect().width(),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+                                       self.innerHandleSize)
             self.bottomEdgeHandle.ignoreGeometryChanges = False
             
             self.leftEdgeHandle.ignoreGeometryChanges = True
-            self.leftEdgeHandle.setPos(QPointF(-self.absoluteXToRelative(self.handleSize, transform), 0))
-            self.leftEdgeHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
+            self.leftEdgeHandle.setPos(0, 0)
+            self.leftEdgeHandle.setRect(-self.innerHandleSize, 0,
+                                       self.innerHandleSize,
                                        self.rect().height())
             self.leftEdgeHandle.ignoreGeometryChanges = False
             
             self.rightEdgeHandle.ignoreGeometryChanges = True
             self.rightEdgeHandle.setPos(QPointF(self.rect().width(), 0))
             self.rightEdgeHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
+                                       self.innerHandleSize,
                                        self.rect().height())
             self.rightEdgeHandle.ignoreGeometryChanges = False
             
             self.topRightCornerHandle.ignoreGeometryChanges = True
-            self.topRightCornerHandle.setPos(self.rect().width(), -self.absoluteYToRelative(self.handleSize, transform))
-            self.topRightCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+            self.topRightCornerHandle.setPos(self.rect().width(), 0)
+            self.topRightCornerHandle.setRect(0, -self.innerHandleSize,
+                                       self.innerHandleSize,
+                                       self.innerHandleSize)
             self.topRightCornerHandle.ignoreGeometryChanges = False
 
             self.bottomRightCornerHandle.ignoreGeometryChanges = True
             self.bottomRightCornerHandle.setPos(self.rect().width(), self.rect().height())
             self.bottomRightCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+                                       self.innerHandleSize,
+                                       self.innerHandleSize)
             self.bottomRightCornerHandle.ignoreGeometryChanges = False
             
             self.bottomLeftCornerHandle.ignoreGeometryChanges = True
-            self.bottomLeftCornerHandle.setPos(-self.absoluteXToRelative(self.handleSize, transform), self.rect().height())
-            self.bottomLeftCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+            self.bottomLeftCornerHandle.setPos(0, self.rect().height())
+            self.bottomLeftCornerHandle.setRect(-self.innerHandleSize, 0,
+                                       self.innerHandleSize,
+                                       self.innerHandleSize)
             self.bottomLeftCornerHandle.ignoreGeometryChanges = False
 
             self.topLeftCornerHandle.ignoreGeometryChanges = True
-            self.topLeftCornerHandle.setPos(-self.absoluteXToRelative(self.handleSize, transform), -self.absoluteYToRelative(self.handleSize, transform))
-            self.topLeftCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+            self.topLeftCornerHandle.setPos(0, 0)
+            self.topLeftCornerHandle.setRect(-self.innerHandleSize, -self.innerHandleSize,
+                                       self.innerHandleSize,
+                                       self.innerHandleSize)
             self.topLeftCornerHandle.ignoreGeometryChanges = False
             
         else:
             self.topEdgeHandle.ignoreGeometryChanges = True
-            self.topEdgeHandle.setPos(QPointF(self.absoluteXToRelative(self.handleSize, transform), 0))
+            self.topEdgeHandle.setPos(0, 0)
             self.topEdgeHandle.setRect(0, 0,
-                                       self.rect().width() - 2 * self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+                                       self.rect().width(),
+                                       self.outerHandleSize)
             self.topEdgeHandle.ignoreGeometryChanges = False
             
             self.bottomEdgeHandle.ignoreGeometryChanges = True
-            self.bottomEdgeHandle.setPos(QPointF(self.absoluteXToRelative(self.handleSize, transform), self.rect().height() - self.absoluteYToRelative(self.handleSize, transform)))
-            self.bottomEdgeHandle.setRect(0, 0,
-                                       self.rect().width() - 2 * self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+            self.bottomEdgeHandle.setPos(0, self.rect().height())
+            self.bottomEdgeHandle.setRect(0, -self.outerHandleSize,
+                                       self.rect().width(),
+                                       self.outerHandleSize)
             self.bottomEdgeHandle.ignoreGeometryChanges = False
             
             self.leftEdgeHandle.ignoreGeometryChanges = True
-            self.leftEdgeHandle.setPos(QPointF(0, self.absoluteYToRelative(self.handleSize, transform)))
+            self.leftEdgeHandle.setPos(QPointF(0, 0))
             self.leftEdgeHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.rect().height() - 2 * self.absoluteYToRelative(self.handleSize, transform))
+                                       self.outerHandleSize,
+                                       self.rect().height())
             self.leftEdgeHandle.ignoreGeometryChanges = False
             
             self.rightEdgeHandle.ignoreGeometryChanges = True
-            self.rightEdgeHandle.setPos(QPointF(self.rect().width() - self.absoluteXToRelative(self.handleSize, transform), self.absoluteYToRelative(self.handleSize, transform)))
-            self.rightEdgeHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.rect().height() - 2 * self.absoluteYToRelative(self.handleSize, transform))
+            self.rightEdgeHandle.setPos(QPointF(self.rect().width(), 0))
+            self.rightEdgeHandle.setRect(-self.outerHandleSize, 0,
+                                       self.outerHandleSize,
+                                       self.rect().height())
             self.rightEdgeHandle.ignoreGeometryChanges = False
             
             self.topRightCornerHandle.ignoreGeometryChanges = True
-            self.topRightCornerHandle.setPos(self.rect().width() - self.absoluteXToRelative(self.handleSize, transform), 0)
-            self.topRightCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+            self.topRightCornerHandle.setPos(self.rect().width(), 0)
+            self.topRightCornerHandle.setRect(-self.outerHandleSize, 0,
+                                       self.outerHandleSize,
+                                       self.outerHandleSize)
             self.topRightCornerHandle.ignoreGeometryChanges = False
             
             self.bottomRightCornerHandle.ignoreGeometryChanges = True
-            self.bottomRightCornerHandle.setPos(self.rect().width() - self.absoluteXToRelative(self.handleSize, transform), self.rect().height() - self.absoluteYToRelative(self.handleSize, transform))
-            self.bottomRightCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+            self.bottomRightCornerHandle.setPos(self.rect().width(), self.rect().height())
+            self.bottomRightCornerHandle.setRect(-self.outerHandleSize, -self.outerHandleSize,
+                                       self.outerHandleSize,
+                                       self.outerHandleSize)
             self.bottomRightCornerHandle.ignoreGeometryChanges = False
             
             self.bottomLeftCornerHandle.ignoreGeometryChanges = True
-            self.bottomLeftCornerHandle.setPos(0, self.rect().height() - self.absoluteYToRelative(self.handleSize, transform))
-            self.bottomLeftCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+            self.bottomLeftCornerHandle.setPos(0, self.rect().height())
+            self.bottomLeftCornerHandle.setRect(0, -self.outerHandleSize,
+                                       self.outerHandleSize,
+                                       self.outerHandleSize)
             self.bottomLeftCornerHandle.ignoreGeometryChanges = False
             
             self.topLeftCornerHandle.ignoreGeometryChanges = True
             self.topLeftCornerHandle.setPos(0, 0)
             self.topLeftCornerHandle.setRect(0, 0,
-                                       self.absoluteXToRelative(self.handleSize, transform),
-                                       self.absoluteYToRelative(self.handleSize, transform))
+                                       self.outerHandleSize,
+                                       self.outerHandleSize)
             self.topLeftCornerHandle.ignoreGeometryChanges = False
         
         self.handlesDirty = False
-        self.handlesCachedFor = transform
+    
+    def notifyResizeStarted(self):
+        pass
+    
+    def notifyResizeProgress(self, newPos, newRect):
+        pass
         
-    def notifyResizeFinished(self, oldPos, oldRect, newPos, newRect):
+    def notifyResizeFinished(self, newPos, newRect):
         self.setRect(newRect)
         self.setPos(newPos)
+        
+    def scaleChanged(self, sx, sy):
+        self.currentScaleX = sx
+        self.currentScaleY = sy
+        
+        for childItem in self.childItems():
+            if isinstance(childItem, ResizingHandle):
+                childItem.scaleChanged(sx, sy)
+                
+            elif isinstance(childItem, ResizableGraphicsRectItem):
+                childItem.scaleChanged(sx, sy)
+                
+        self.handlesDirty = True
+        self.ensureHandlesUpdated()
+        
+    def itemChange(self, change, value):
+        ret = super(ResizableGraphicsRectItem, self).itemChange(change, value)
+        
+        if change == QGraphicsItem.ItemSelectedHasChanged:
+            if value:
+                self.showAllHandles()
+            else:
+                self.hideAllHandles()
+        
+        return ret
         
     def hoverEnterEvent(self, event):
         super(ResizableGraphicsRectItem, self).hoverEnterEvent(event)
         
-        self.setPen(self.hoverPen())
-        self.showAllHandles()
+        self.setPen(self.getHoverPen())
         self.mouseOver = True
         
     def hoverLeaveEvent(self, event):
         self.mouseOver = False
-        self.setPen(self.normalPen())
-        self.hideAllHandles()
+        self.setPen(self.getNormalPen())
     
         super(ResizableGraphicsRectItem, self).hoverLeaveEvent(event)
         

@@ -21,6 +21,7 @@ from PySide.QtCore import *
 
 from xml.etree import ElementTree
 import os
+import math
 
 import resizable
 
@@ -133,7 +134,7 @@ class ImageOffset(QGraphicsPixmapItem):
 
         super(ImageOffset, self).hoverLeaveEvent(event)
 
-class ImageEntry(QGraphicsRectItem):
+class ImageEntry(resizable.ResizableGraphicsRectItem):
     """Represents the image of the imageset, can be drag moved, selected, resized, ...
     """
     
@@ -162,10 +163,6 @@ class ImageEntry(QGraphicsRectItem):
         
         self.parent = parent
         
-        pen = QPen()
-        pen.setColor(QColor(Qt.lightGray))
-        self.setPen(pen)
-        
         self.setAcceptsHoverEvents(True)
         self.isHovered = False
         
@@ -187,6 +184,12 @@ class ImageEntry(QGraphicsRectItem):
         # this allows fast updates of the list item without looking it up
         # It is save to assume that this is None or a valid QListWidgetItem        
         self.listItem = None
+        
+    def constrainResizeRect(self, rect):
+        # we simply round the rectangle
+        rect = QRectF(QPointF(round(rect.topLeft().x()), round(rect.topLeft().y())), QPointF(round(rect.bottomRight().x()), round(rect.bottomRight().y())))
+        
+        return super(ImageEntry, self).constrainResizeRect(rect)
         
     def loadFromElement(self, element):
         self.name = element.get("Name", "Unknown")
@@ -322,10 +325,6 @@ class ImageEntry(QGraphicsRectItem):
         
         self.setZValue(self.zValue() + 1)
         
-        pen = QPen()
-        pen.setColor(QColor(Qt.black))
-        self.setPen(pen)
-        
         self.label.setVisible(True)
         
         # TODO: very unreadable
@@ -342,10 +341,6 @@ class ImageEntry(QGraphicsRectItem):
         
         if not self.isSelected():
             self.label.setVisible(False)
-        
-        pen = QPen()
-        pen.setColor(QColor(Qt.lightGray))
-        self.setPen(pen)
         
         self.setZValue(self.zValue() - 1)
         

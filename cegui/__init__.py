@@ -30,6 +30,7 @@ import time
 import PyCEGUI
 import PyCEGUIOpenGLRenderer
 
+import resizable
 # make it visible to the outside
 import widget
 
@@ -154,7 +155,7 @@ class GraphicsScene(QGraphicsScene):
         
         self.update()
 
-class GraphicsView(QGraphicsView):
+class GraphicsView(resizable.GraphicsView):
     """This is a final class, not suitable for subclassing. This views given scene
     using QGLWidget. It's designed to work with cegui.GraphicsScene derived classes.
     
@@ -551,6 +552,7 @@ class ContainerWidget(QWidget):
     def syncToProject(self, project):
         progress = QProgressDialog("Cleaning embedded CEGUI...", "", 0, 3, self)
         progress.setWindowModality(Qt.WindowModal)
+        progress.show()
         
         self.ensureCEGUIIsInitialised()
         self.makeGLContextCurrent()
