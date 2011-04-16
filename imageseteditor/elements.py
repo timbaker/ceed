@@ -81,6 +81,8 @@ class ImageOffset(QGraphicsPixmapItem):
                       QGraphicsItem.ItemIgnoresTransformations |
                       QGraphicsItem.ItemSendsGeometryChanges)
         
+        self.setCursor(Qt.OpenHandCursor)
+        
         self.setPixmap(QPixmap("icons/imageset_editing/offset_crosshair.png"))
         # the crosshair pixmap is 15x15, (7, 7) is the centre pixel of it,
         # we want that to be the (0, 0) point of the crosshair
@@ -169,11 +171,14 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         # used for undo
         self.potentialMove = False
         self.oldPosition = None
+        self.resized = False
         
         self.setFlags(QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemIsSelectable |
                       #QGraphicsItem.ItemClipsChildrenToShape |
                       QGraphicsItem.ItemSendsGeometryChanges)
+        
+        self.setCursor(Qt.OpenHandCursor)
         
         self.setVisible(True)
         
@@ -320,6 +325,12 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
 
         return super(ImageEntry, self).itemChange(change, value)
     
+    def notifyResizeFinished(self, newPos, newRect):
+        super(ImageEntry, self).notifyResizeFinished(newPos, newRect)
+        
+        # mark as resized so we can pick it up in VisualEditing.mouseReleaseEvent
+        self.resized = True
+    
     def hoverEnterEvent(self, event):
         super(ImageEntry, self).hoverEnterEvent(event)
         
@@ -357,6 +368,7 @@ class ImagesetEntry(QGraphicsPixmapItem):
         self.autoScaled = False
         
         self.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
+        self.setCursor(Qt.ArrowCursor)
         
         self.parent = parent
         self.imageEntries = []

@@ -359,7 +359,7 @@ class CreateCommand(commands.UndoCommand):
         image.listItem = None
         
         image.setParentItem(None)
-        self.visual.scene.removeItem(image)
+        self.visual.scene().removeItem(image)
             
         self.visual.dockWidget.refresh()
         
@@ -424,7 +424,7 @@ class DeleteCommand(commands.UndoCommand):
             image.listItem = None
             
             image.setParentItem(None)
-            self.visual.scene.removeItem(image)
+            self.visual.scene().removeItem(image)
             
             del image      
             

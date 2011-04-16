@@ -166,7 +166,7 @@ class ImagesetEditorDockWidget(QDockWidget):
             
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Delete:
-            selection = self.parent.scene.selectedItems()
+            selection = self.parent.scene().selectedItems()
             
             handled = self.parent.deleteImageEntries(selection)
             
@@ -188,7 +188,7 @@ class ImagesetEditorDockWidget(QDockWidget):
             return
         
         self.selectionUnderway = True
-        self.parent.scene.clearSelection()
+        self.parent.scene().clearSelection()
         
         imageEntryNames = self.list.selectedItems()
         for imageEntryName in imageEntryNames:
@@ -615,43 +615,85 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
             self.lastMousePosition = event.pos()
     
     def mouseReleaseEvent(self, event):
+        """When mouse is released, we have to check what items were moved and resized.
+        
+        AFAIK Qt doesn't give us any move finished notification so I do this manually
+        """
+        
         if event.buttons() != Qt.MiddleButton:
             super(VisualEditing, self).mouseReleaseEvent(event)
             
-            imageNames = []
-            imageOldPositions = {}
-            imageNewPositions = {}
+            # moving
+            moveImageNames = []
+            moveImageOldPositions = {}
+            moveImageNewPositions = {}
             
-            offsetNames = []
-            offsetOldPositions = {}
-            offsetNewPositions = {}
+            moveOffsetNames = []
+            moveOffsetOldPositions = {}
+            moveOffsetNewPositions = {}
             
+            # resizing            
+            resizeImageNames = []
+            resizeImageOldPositions = {}
+            resizeImageOldRects = {}
+            resizeImageNewPositions = {}
+            resizeImageNewRects = {}
+            
+            # we have to "expand" the items, adding parents of resizing handles
+            # instead of the handles themselves
+            expandedSelectedItems = []
             for selectedItem in self.scene().selectedItems():
                 if isinstance(selectedItem, elements.ImageEntry):
+                    expandedSelectedItems.append(selectedItem)
+                elif isinstance(selectedItem, elements.ImageOffset):
+                    expandedSelectedItems.append(selectedItem)
+                elif isinstance(selectedItem, resizable.ResizingHandle):
+                    expandedSelectedItems.append(selectedItem.parentItem())
+            
+            for selectedItem in expandedSelectedItems:
+                if isinstance(selectedItem, elements.ImageEntry):
                     if selectedItem.oldPosition:
-                        imageNames.append(selectedItem.name)
-                        imageOldPositions[selectedItem.name] = selectedItem.oldPosition
-                        imageNewPositions[selectedItem.name] = selectedItem.pos()
+                        moveImageNames.append(selectedItem.name)
+                        moveImageOldPositions[selectedItem.name] = selectedItem.oldPosition
+                        moveImageNewPositions[selectedItem.name] = selectedItem.pos()
+                        
+                    if selectedItem.resized:
+                        resizeImageNames.append(selectedItem.name)
+                        resizeImageOldPositions[selectedItem.name] = selectedItem.resizeOldPos
+                        resizeImageOldRects[selectedItem.name] = selectedItem.resizeOldRect
+                        resizeImageNewPositions[selectedItem.name] = selectedItem.pos()
+                        resizeImageNewRects[selectedItem.name] = selectedItem.rect()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
+                    selectedItem.resized = False
                     
                 elif isinstance(selectedItem, elements.ImageOffset):
                     if selectedItem.oldPosition:
-                        offsetNames.append(selectedItem.parent.name)
-                        offsetOldPositions[selectedItem.parent.name] = selectedItem.oldPosition
-                        offsetNewPositions[selectedItem.parent.name] = selectedItem.pos()
+                        moveOffsetNames.append(selectedItem.parent.name)
+                        moveOffsetOldPositions[selectedItem.parent.name] = selectedItem.oldPosition
+                        moveOffsetNewPositions[selectedItem.parent.name] = selectedItem.pos()
                         
                     selectedItem.potentialMove = False
                     selectedItem.oldPosition = None
             
-            if len(imageNames) > 0:
-                cmd = undo.MoveCommand(self, imageNames, imageOldPositions, imageNewPositions)
+            # NOTE: It should never happen that more than 2 of these sets are populated
+            #       User moves images XOR moves offsets XOR resizes images
+            #
+            #       I don't do elif for robustness though, who knows what can happen ;-)
+            
+            if len(moveImageNames) > 0:
+                cmd = undo.MoveCommand(self, moveImageNames, moveImageOldPositions, moveImageNewPositions)
                 self.parent.undoStack.push(cmd)
                 
-            if len(offsetNames) > 0:
-                cmd = undo.OffsetMoveCommand(self, offsetNames, offsetOldPositions, offsetNewPositions)
+            if len(moveOffsetNames) > 0:
+                cmd = undo.OffsetMoveCommand(self, moveOffsetNames, moveOffsetOldPositions, moveOffsetNewPositions)
                 self.parent.undoStack.push(cmd)
+                
+            if len(resizeImageNames) > 0:
+                cmd = undo.GeometryChangeCommand(self, resizeImageNames, resizeImageOldPositions, resizeImageOldRects, resizeImageNewPositions, resizeImageNewRects)
+                self.parent.undoStack.push(cmd)
+                
         else:
             pass
     
@@ -680,7 +722,7 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
         handled = False
         
         if event.key() in [Qt.Key_A, Qt.Key_D, Qt.Key_W, Qt.Key_S]:
-            selection = self.scene.selectedItems()
+            selection = self.scene().selectedItems()
             
             if len(selection) > 0:
                 delta = QPointF()

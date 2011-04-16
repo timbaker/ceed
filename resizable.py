@@ -42,6 +42,13 @@ class GraphicsView(QGraphicsView):
         for item in self.scene().items():
             if isinstance(item, ResizableGraphicsRectItem):
                 item.scaleChanged(sx, sy)
+                
+    def mouseReleaseEvent(self, event):
+        super(GraphicsView, self).mouseReleaseEvent(event)
+       
+        for selectedItem in self.scene().selectedItems():
+            if isinstance(selectedItem, ResizingHandle):
+                selectedItem.mouseReleaseEventSelected(event)
 
 class ResizingHandle(QGraphicsRectItem):
     def __init__(self, parent):
@@ -64,13 +71,8 @@ class ResizingHandle(QGraphicsRectItem):
         newRect = parent.rect().adjusted(delta_x1, delta_y1, delta_x2, delta_y2)
         newRect = parent.constrainResizeRect(newRect)
         
-        #print "old rect: ", parent.rect()
-        #print "old rect adjusted: ", parent.rect().adjusted(delta_x1, delta_y1, delta_x2, delta_y2)
-        #print "min rect: ", minRect
-        #print "new rect: ", newRect
-        
         # TODO: the rect moves as a whole when it can't be sized any less
-        #       this is probably not the behaviour we want!
+        #       this is probably not the behavior we want!
         
         topLeftDelta = newRect.topLeft() - parent.rect().topLeft()
         bottomRightDelta = newRect.bottomRight() - parent.rect().bottomRight()
@@ -113,9 +115,7 @@ class ResizingHandle(QGraphicsRectItem):
 
         return super(ResizingHandle, self).itemChange(change, value)
     
-    def mouseReleaseEvent(self, event):
-        super(ResizingHandle, self).mouseReleaseEvent(event)
-        
+    def mouseReleaseEventSelected(self, event):
         if self.parentItem().resizeInProgress:
             # resize was in progress and just ended
             self.parentItem().resizeInProgress = False
@@ -669,4 +669,3 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         self.setPen(self.getNormalPen())
     
         super(ResizableGraphicsRectItem, self).hoverLeaveEvent(event)
-        
