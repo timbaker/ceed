@@ -112,6 +112,11 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.imagesetEntry = imagesetEntry
         
     def refresh(self):
+        """Refreshes the whole list
+        
+        Note: User potentially looses selection when this is called!
+        """
+        
         # FIXME: This is really really weird!
         #        If I call list.clear() it crashes when undoing image deletes for some reason
         #        I already spent several hours tracking it down and I couldn't find anything
@@ -153,11 +158,21 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.filterChanged(self.filterBox.text())
 
     def setActiveImageEntry(self, imageEntry):
+        """Active image entry is the image entry that is selected when there are no
+        other image entries selected. It's properties show in the property box.
+        
+        Note: Imageset editing doesn't allow multi selection property editing because
+              IMO it doesn't make much sense.
+        """
+        
         self.activeImageEntry = imageEntry
         
         self.refreshActiveImageEntry()
     
     def refreshActiveImageEntry(self):
+        """Refreshes the properties of active image entry (from image entry to the property box)
+        """
+        
         if not self.activeImageEntry:
             self.positionX.setText("")
             self.positionX.setEnabled(False)
@@ -330,6 +345,9 @@ class ImagesetEditorDockWidget(QDockWidget):
         self.metaslot_propertyChanged("yoffset", text)
 
 class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
+    """This is the "Visual" tab for imageset editing
+    """
+    
     def __init__(self, parent):
         mixedtab.EditMode.__init__(self)
         QGraphicsView.__init__(self)
@@ -420,6 +438,11 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
         
     def refreshSceneRect(self):
         boundingRect = self.imagesetEntry.boundingRect()
+        
+        # the reason to make the bounding rect 100px bigger on all the sides is to make
+        # middle button drag scrolling easier (you can put the image where you want without
+        # running out of scene
+        
         boundingRect.adjust(-100, -100, 100, 100)
         self.scene().setSceneRect(boundingRect)
         
@@ -794,9 +817,6 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
             event.accept()
             
     def slot_selectionChanged(self):
-        if QApplication.closingDown():
-            return
-        
         # if dockWidget is changing the selection, back off
         if self.dockWidget.selectionUnderway:
             return

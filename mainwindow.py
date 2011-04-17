@@ -108,6 +108,7 @@ class MainWindow(QMainWindow):
         self.saveAction.triggered.connect(self.slot_save)
         self.saveAction.setEnabled(False)
         self.saveAllAction = self.findChild(QAction, "actionSaveAll")
+        self.saveAllAction.triggered.connect(self.slot_saveAll)
         self.saveAllAction.setEnabled(False)
         self.closeAction = self.findChild(QAction, "actionClose")
         self.closeAction.setEnabled(False)
@@ -453,6 +454,10 @@ class MainWindow(QMainWindow):
     def slot_save(self):
         if self.activeEditor:
             self.activeEditor.save()
+    
+    def slot_saveAll(self):
+        for editor in self.tabEditors:
+            editor.save()
         
     def slot_undo(self):
         if self.activeEditor:

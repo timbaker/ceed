@@ -482,6 +482,14 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         for item in self.childItems():
             if isinstance(item, ResizingHandle):
                 item.setSelected(False)
+    
+    def isAnyHandleSelected(self):
+        for item in self.childItems():
+            if isinstance(item, ResizingHandle):
+                if item.isSelected():
+                    return True
+                
+        return False
         
     def ensureHandlesUpdated(self):        
         if self.handlesDirty and not self.resizeInProgress:

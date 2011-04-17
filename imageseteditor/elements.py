@@ -191,8 +191,9 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         self.listItem = None
         
     def constrainResizeRect(self, rect):
-        # we simply round the rectangle
-        rect = QRectF(QPointF(round(rect.topLeft().x()), round(rect.topLeft().y())), QPointF(round(rect.bottomRight().x()), round(rect.bottomRight().y())))
+        # we simply round the rectangle because we only support "full" pixels
+        rect = QRectF(QPointF(round(rect.topLeft().x()), round(rect.topLeft().y())),
+                      QPointF(round(rect.bottomRight().x()), round(rect.bottomRight().y())))
         
         return super(ImageEntry, self).constrainResizeRect(rect)
         
@@ -225,10 +226,18 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         return ret
 
     def getPixmap(self):
+        """Creates and returns a pixmap containing what's in the underlying image in the rectangle
+        that this ImageEntry has set.
+        
+        This is mostly used for preview thumbnails in the dock widget.
+        """
         return self.parent.pixmap().copy(int(self.pos().x()), int(self.pos().y()),
                                          int(self.rect().width()), int(self.rect().height()))
 
     def updateListItem(self):
+        """Updates the list item associated with this image entry in the dock widget
+        """
+        
         if not self.listItem:
             return
         
@@ -249,6 +258,10 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         self.listItem.setIcon(QIcon(preview))
 
     def updateListItemSelection(self):
+        """Synchronises the selection in the dock widget's list. This makes sure that when you select
+        this item the list sets the selection to this item as well.
+        """
+        
         if not self.listItem:
             return
         
@@ -260,7 +273,7 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         
         dockWidget.selectionSynchronisationUnderway = True
         
-        if self.isSelected() or self.offset.isSelected():
+        if self.isSelected() or self.isAnyHandleSelected() or self.offset.isSelected():
             self.listItem.setSelected(True)
         else:
             self.listItem.setSelected(False)
@@ -268,6 +281,9 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
         dockWidget.selectionSynchronisationUnderway = False
 
     def updateDockWidget(self):
+        """If we are selected in the dock widget, this updates the property box
+        """
+        
         self.updateListItem()
         
         if not self.listItem:
@@ -378,6 +394,12 @@ class ImageEntry(resizable.ResizableGraphicsRectItem):
             painter.drawRect(self.rect())
         
 class ImagesetEntry(QGraphicsPixmapItem):
+    """This is the whole imageset containing all the images (ImageEntries).
+    
+    The main reason for this is not to have multiple imagesets editing at once but rather
+    to have the transparency background working properly.
+    """
+    
     def __init__(self, parent):
         super(ImagesetEntry, self).__init__()
         
@@ -421,6 +443,13 @@ class ImagesetEntry(QGraphicsPixmapItem):
         return None
     
     def loadImage(self, relativeImagePath):
+        """
+        Replaces the underlying image (if any is loaded) to the image on given relative path
+        
+        Relative path is relative to the directory where the .imageset file resides
+        (which is usually your project's imageset resource group path)
+        """
+        
         self.imageFile = relativeImagePath
         self.setPixmap(QPixmap(self.getAbsoluteImageFile()))
         self.transparencyBackground.setRect(self.boundingRect())
@@ -434,9 +463,16 @@ class ImagesetEntry(QGraphicsPixmapItem):
         self.parent.refreshSceneRect()
     
     def getAbsoluteImageFile(self):
+        """Returns an absolute (OS specific!) path of the underlying image
+        """
+        
         return os.path.join(os.path.dirname(self.parent.parent.filePath), self.imageFile)
     
     def convertToRelativeImageFile(self, absoluteImageFile):
+        """Converts given absolute underlying image path to relative path (relative to the directory where
+        the .imageset file resides
+        """
+        
         return os.path.normpath(os.path.relpath(absoluteImageFile, os.path.dirname(self.parent.parent.filePath)))
     
     def loadFromElement(self, element):
