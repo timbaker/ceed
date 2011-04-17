@@ -95,6 +95,7 @@ class ResizingHandle(QGraphicsRectItem):
             
         elif change == QGraphicsItem.ItemSelectedHasChanged:
             self.unselectAllSiblingHandles()
+            self.parentItem().notifyHandleSelected(self)
         
         elif change == QGraphicsItem.ItemPositionChange:
             if not self.parentItem().resizeInProgress and not self.ignoreGeometryChanges:
@@ -482,6 +483,9 @@ class ResizableGraphicsRectItem(QGraphicsRectItem):
         for item in self.childItems():
             if isinstance(item, ResizingHandle):
                 item.setSelected(False)
+    
+    def notifyHandleSelected(self, handle):
+        pass
     
     def isAnyHandleSelected(self):
         for item in self.childItems():

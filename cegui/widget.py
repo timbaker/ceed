@@ -87,6 +87,8 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
         self.preResizeSize = None
     
     def moveToFront(self):
+        self.widget.moveToFront()
+        
         parentItem = self.parentItem()
         if parentItem:
             for item in parentItem.childItems():
@@ -104,10 +106,14 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
     def itemChange(self, change, value):    
         if change == QGraphicsItem.ItemSelectedHasChanged:
             if value:
-                self.widget.moveToFront()
                 self.moveToFront()
         
         return super(Manipulator, self).itemChange(change, value)
+    
+    def notifyHandleSelected(self, handle):
+        super(Manipulator, self).notifyHandleSelected(handle)
+        
+        self.moveToFront()
     
     def getMinSize(self):
         if self.widget:
@@ -157,8 +163,38 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
         for item in self.childItems():
             if isinstance(item, Manipulator):
                 item.setVisible(True)
-                
+
+    def boundingClipPath(self):
+        ret = QPainterPath()
+        ret.addRect(self.boundingRect())
+        
+        return ret
+
+    def isAboveItem(self, item):
+        # undecidable otherwise
+        assert(item.scene() == self.scene())
+        
+        # FIXME: nasty nasty way to do this
+        for i in self.scene().items():
+            if i is self:
+                return True
+            if i is item:
+                return False
+            
+        assert(False)
+        
     def paint(self, painter, option, widget):
+        painter.save()
+        
+        clipPath = QPainterPath()
+        clipPath.addRect(QRectF(-self.scenePos().x(), -self.scenePos().y(), self.scene().sceneRect().width(), self.scene().sceneRect().height()))
+        for item in self.collidingItems():
+            if isinstance(item, Manipulator):
+                if item.isAboveItem(self):
+                    clipPath = clipPath.subtracted(item.boundingClipPath().translated(item.scenePos() - self.scenePos()))
+        
+        painter.setClipPath(clipPath)
+        
         super(Manipulator, self).paint(painter, option, widget)
         
         baseSize = self.widget.getParentPixelSize()
@@ -242,4 +278,6 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
             pen.setColor(QColor(255, 0, 0, 255))
             painter.setPen(pen)
             painter.drawLine(yMidPoint + yRelativeOffset, yEndPoint + yRelativeOffset)
+            
+        painter.restore()
             
