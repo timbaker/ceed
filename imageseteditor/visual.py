@@ -470,8 +470,8 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
     def zoomIn(self):
         self.zoomFactor *= 2
         
-        if self.zoomFactor > 64:
-            self.zoomFactor = 64
+        if self.zoomFactor > 256:
+            self.zoomFactor = 256
         
         self.performZoom()
     
@@ -512,12 +512,20 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
             newRects = {}
             
             for imageEntry in imageEntries:
+
                 imageNames.append(imageEntry.name)
                 oldPositions[imageEntry.name] = imageEntry.pos()
                 newPositions[imageEntry.name] = imageEntry.pos() - topLeftDelta
                 oldRects[imageEntry.name] = imageEntry.rect()
+                
                 newRect = imageEntry.rect()
                 newRect.setBottomRight(newRect.bottomRight() - topLeftDelta + bottomRightDelta)
+
+                if newRect.width() < 1:
+                    newRect.setWidth(1)
+                if newRect.height() < 1:
+                    newRect.setHeight(1)
+                
                 newRects[imageEntry.name] = newRect
                 
             cmd = undo.GeometryChangeCommand(self, imageNames, oldPositions, oldRects, newPositions, newRects)
@@ -779,10 +787,24 @@ class VisualEditing(resizable.GraphicsView, mixedtab.EditMode):
             self.zoomOut()
             
     def keyReleaseEvent(self, event):
+        # TODO: offset keyboard handling
+        
         handled = False
         
         if event.key() in [Qt.Key_A, Qt.Key_D, Qt.Key_W, Qt.Key_S]:
-            selection = self.scene().selectedItems()
+            selection = []
+            
+            for item in self.scene().selectedItems():
+                if item in selection:
+                    continue
+                
+                if isinstance(item, elements.ImageEntry):
+                    selection.append(item)
+                    
+                elif isinstance(item, resizable.ResizingHandle):
+                    parent = item.parentItem()
+                    if not parent in selection:
+                        selection.append(parent)
             
             if len(selection) > 0:
                 delta = QPointF()

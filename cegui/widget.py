@@ -201,6 +201,8 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
         if self.widget.getParent() is not None and not self.widget.isNonClientWindow():
             baseSize = self.widget.getParent().getUnclippedInnerRect().getSize()
         
+        guidePenSize = 1
+        
         if self.resizeInProgress or self.isAnyHandleSelected():
             # draw the size guides
             
@@ -209,13 +211,13 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
             relativeWidthInPixels = PyCEGUI.CoordConverter.asAbsolute(PyCEGUI.UDim(widgetSize.d_x.d_scale, 0), baseSize.d_width)
             absoluteWidthInPixels = widgetSize.d_x.d_offset
             
-            widthStartPoint = self.rect().topLeft() - QPointF(0, 2)
+            widthStartPoint = self.rect().topLeft() - QPointF(0, 1 + guidePenSize)
             widthMidPoint = widthStartPoint + QPointF(relativeWidthInPixels, 0)
             widthEndPoint = widthMidPoint + QPointF(absoluteWidthInPixels, 0)
-            widthAbsoluteOffset = QPointF(0, -1) if relativeWidthInPixels * absoluteWidthInPixels < 0 else QPointF(0, 0)
+            widthAbsoluteOffset = QPointF(0, -guidePenSize) if relativeWidthInPixels * absoluteWidthInPixels < 0 else QPointF(0, 0)
             
             pen = QPen()
-            pen.setWidth(1)
+            pen.setWidth(guidePenSize)
             pen.setColor(QColor(255, 0, 0, 255))
             painter.setPen(pen)
             painter.drawLine(widthStartPoint, widthMidPoint)
@@ -226,13 +228,13 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
             relativeHeightInPixels = PyCEGUI.CoordConverter.asAbsolute(PyCEGUI.UDim(widgetSize.d_y.d_scale, 0), baseSize.d_height)
             absoluteHeightInPixels = widgetSize.d_y.d_offset
             
-            heightStartPoint = self.rect().topRight() + QPointF(2, 0)
+            heightStartPoint = self.rect().topRight() + QPointF(1 + guidePenSize, 0)
             heightMidPoint = heightStartPoint + QPointF(0, relativeHeightInPixels)
             heightEndPoint = heightMidPoint + QPointF(0, absoluteHeightInPixels)
-            heightAbsoluteOffset = QPointF(1, 0) if relativeHeightInPixels * absoluteHeightInPixels < 0 else QPointF(0, 0)
+            heightAbsoluteOffset = QPointF(guidePenSize, 0) if relativeHeightInPixels * absoluteHeightInPixels < 0 else QPointF(0, 0)
             
             pen = QPen()
-            pen.setWidth(1)
+            pen.setWidth(guidePenSize)
             pen.setColor(QColor(255, 0, 0, 255))
             painter.setPen(pen)
             painter.drawLine(heightStartPoint, heightMidPoint)
@@ -251,10 +253,10 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
             xStartPoint = self.rect().topLeft()
             xMidPoint = xStartPoint - QPointF(absoluteXInPixels, 0)
             xEndPoint = xMidPoint - QPointF(relativeXInPixels, 0)
-            xRelativeOffset = QPointF(0, 1) if relativeXInPixels * absoluteXInPixels < 0 else QPointF(0, 0)
+            xRelativeOffset = QPointF(0, guidePenSize) if relativeXInPixels * absoluteXInPixels < 0 else QPointF(0, 0)
             
             pen = QPen()
-            pen.setWidth(1)
+            pen.setWidth(guidePenSize)
             pen.setColor(QColor(0, 255, 0, 255))
             painter.setPen(pen)
             painter.drawLine(xStartPoint, xMidPoint)
@@ -268,10 +270,10 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
             yStartPoint = self.rect().topLeft()
             yMidPoint = yStartPoint - QPointF(0, absoluteYInPixels)
             yEndPoint = yMidPoint - QPointF(0, relativeYInPixels)
-            yRelativeOffset = QPointF(-1, 0) if relativeYInPixels * absoluteYInPixels < 0 else QPointF(0, 0)
+            yRelativeOffset = QPointF(-guidePenSize, 0) if relativeYInPixels * absoluteYInPixels < 0 else QPointF(0, 0)
             
             pen = QPen()
-            pen.setWidth(1)
+            pen.setWidth(guidePenSize)
             pen.setColor(QColor(0, 255, 0, 255))
             painter.setPen(pen)
             painter.drawLine(yStartPoint, yMidPoint)
@@ -280,4 +282,3 @@ class Manipulator(resizable.ResizableGraphicsRectItem):
             painter.drawLine(yMidPoint + yRelativeOffset, yEndPoint + yRelativeOffset)
             
         painter.restore()
-            
