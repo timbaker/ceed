@@ -358,7 +358,7 @@ class MainWindow(QMainWindow):
         try:
             ret.initialise(self)
         
-        except Exception as e:
+        except Exception:
             # it may have been partly constructed at this point
             try:
                 ret.finalise()
@@ -367,7 +367,7 @@ class MainWindow(QMainWindow):
                 # catch all exception the finalisation raises (we can't deal with them anyways)
                 pass
             
-            raise e
+            raise
             
         self.tabEditors.append(ret)
         return ret    
