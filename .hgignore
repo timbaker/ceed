@@ -1,0 +1,24 @@
+syntax: glob
+.DS_Store
+*.tmp
+*~
+*.o
+*.obj
+*.orig
+*.rej
+*.dylib
+*.so
+*.dll
+dependencies/
+example_data/datafiles0_7/
+example_data/datafiles0_8/
+build/
+xcuserdata/
+*.xcworkspace/
+*.pyc
+.project
+.pydevproject
+*.directory
+*.kdev4
+CEGUI.log
+ui/**.py
