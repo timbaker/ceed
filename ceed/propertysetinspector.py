@@ -54,14 +54,18 @@ class PropertyInspectorWidget(QtGui.QWidget):
         self.filterBox.textChanged.connect(self.filterChanged)
 
         self.selectionLabel = QtGui.QLabel();
-        self.selectionLabel.setAlignment(QtCore.Qt.AlignRight)
+        self.selectionLabel.setAlignment(QtCore.Qt.AlignCenter)
         self.selectionLabel.setFrameStyle(QtGui.QFrame.StyledPanel)
         self.selectionLabel.setFrameShadow(QtGui.QFrame.Sunken)
 
+        self.selectionObjectPath = ""
+        self.selectionObjectDescription = "Nothing is selected."
+        self.selectionLabelTooltip = ""
+
         self.ptree = ptUi.PropertyTreeWidget()
 
-        layout.addWidget(self.filterBox)
         layout.addWidget(self.selectionLabel)
+        layout.addWidget(self.filterBox)
         layout.addWidget(self.ptree)
 
         # set the minimum size to a reasonable value for this widget
@@ -84,44 +88,57 @@ class PropertyInspectorWidget(QtGui.QWidget):
     def setPropertyManager(self, propertyManager):
         self.propertyManager = propertyManager
 
+    def resizeEvent(self, QResizeEvent):
+        self.updateSelectionLabelElidedText()
+
     @staticmethod
     def generateLabelForSet(ceguiPropertySet):
         # We do not know what the property set is but we can take a few informed
         # guesses. Most likely it will be a CEGUI::Window.
 
         if isinstance(ceguiPropertySet, PyCEGUI.Window):
-            return "%s : %s" % (ceguiPropertySet.getNamePath(), ceguiPropertySet.getType())
-
+            return ceguiPropertySet.getNamePath(), ceguiPropertySet.getType()
         else:
-            return "Unknown PropertySet"
+            return "", "Unknown PropertySet"
 
     def setSource(self, source):
 
         #We check what kind of source we are dealing with
         if type(source) is list:
             if len(source) == 0:
-                self.selectionLabel.setText("Nothing is selected.")
-                self.selectionLabel.setToolTip("")
+            self.selectionObjectPath = ""
+            self.selectionObjectDescription = "Nothing is selected."
+            self.selectionLabelTooltip = ""
+
 
             elif len(source) == 1:
-                label = PropertyInspectorWidget.generateLabelForSet(source[0])
-                self.selectionLabel.setText(label)
-                self.selectionLabel.setToolTip(label)
+            self.selectionObjectPath, self.selectionObjectDescription = PropertyInspectorWidget.generateLabelForSet(ceguiPropertySets[0])
+            self.selectionLabelTooltip = self.selectionObjectDescription
 
             else:
-                self.selectionLabel.setText("Multiple selections...")
-
                 tooltip = ""
-                for ceguiPropertySet in source:
-                    tooltip += PropertyInspectorWidget.generateLabelForSet(ceguiPropertySet) + "\n"
+                for ceguiPropertySet in ceguiPropertySets:
+                    path, typeName = PropertyInspectorWidget.generateLabelForSet(ceguiPropertySet)
+                    tooltip += typeName + "\n"
 
-                self.selectionLabel.setToolTip(tooltip.rstrip('\n'))
+                self.selectionObjectPath = ""
+                self.selectionObjectDescription = "Multiple selections..."
+                self.selectionLabelTooltip = tooltip.rstrip('\n')
+
+                
         else:
             #Otherwise it must be a FalagardElement
             from ceed.editors.looknfeel.hierarchy_tree_item import LookNFeelHierarchyItem
             falagardEleName, falagardEleTooltip = LookNFeelHierarchyItem.getNameAndToolTip(source, "")
-            self.selectionLabel.setText(falagardEleName)
-            self.selectionLabel.setToolTip(falagardEleTooltip)
+            self.selectionObjectPath = ""
+            self.selectionObjectDescription = falagardEleName
+            self.selectionLabelTooltip = falagardEleTooltip
+
+        self.updateSelectionLabelElidedText()
+
+
+
+    
 
         categories = self.propertyManager.buildCategories(source)
 
@@ -133,6 +150,33 @@ class PropertyInspectorWidget(QtGui.QWidget):
     def getSources(self):
         return self.currentSource
 
+
+    def updateSelectionLabelElidedText(self):
+        """
+        Shortens the window/widget path so that the whole text will fit into the label. The beginning of the, if necessary, cut-off path text will be "...".
+        """
+
+        adjustedSelectionObjectPath = ""
+        if self.selectionObjectPath:
+            adjustedSelectionObjectPath = self.selectionObjectPath + " : "
+
+        fontMetrics = self.selectionLabel.fontMetrics()
+        labelWidth = self.selectionLabel.size().width()
+        objectDescriptionWidth = fontMetrics.width(self.selectionObjectDescription)
+        objectPathWidth = fontMetrics.width(adjustedSelectionObjectPath)
+        margin = 6
+        minWidthTakenByPath = 20
+
+        if labelWidth > objectDescriptionWidth + objectPathWidth:
+            finalText = adjustedSelectionObjectPath + self.selectionObjectDescription
+        elif labelWidth < minWidthTakenByPath + objectDescriptionWidth:
+            finalText = fontMetrics.elidedText(self.selectionObjectDescription, QtCore.Qt.ElideRight, labelWidth - margin)
+        else:
+            alteredPathText = fontMetrics.elidedText(adjustedSelectionObjectPath, QtCore.Qt.ElideLeft, labelWidth - margin - objectDescriptionWidth)
+            finalText = alteredPathText + self.selectionObjectDescription
+
+        self.selectionLabel.setText(finalText)
+        self.selectionLabel.setToolTip(self.selectionLabelTooltip)
 
 class CEGUIPropertyManager(object):
     """Builds propertytree properties from CEGUI properties and PropertySets,
