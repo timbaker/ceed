@@ -230,16 +230,36 @@ class PropertyCategoryRow(PropertyTreeRow):
 
         super(PropertyCategoryRow, self).__init__()
 
-        self.nameItem.setEditable(False)
-        self.nameItem.setText(self.category.name)
-        self.nameItem.setBold(True)
-
         self.valueItem.setEditable(False)
+
+        self.nameItem.setText(self.category.name)
+        self.setupCategoryOptions(self.nameItem)
+
+    @staticmethod
+    def setupCategoryOptions(categoryItem):
+        """
+        Sets up the standard look and options for a category item
+        :param categoryItem: QtGui.QStandardItem
+        :return:
+        """
+        categoryItem.setEditable(False)
+        categoryItem.setSelectable(False)
+        PropertyCategoryRow.setCategoryItemFontBold(categoryItem, True)
 
         # Change default colours
         palette = QtGui.QApplication.palette()
-        self.nameItem.setForeground(palette.brush(QtGui.QPalette.Normal, QtGui.QPalette.BrightText))
-        self.nameItem.setBackground(palette.brush(QtGui.QPalette.Normal, QtGui.QPalette.Dark))
+        categoryItem.setForeground(palette.brush(QtGui.QPalette.Normal, QtGui.QPalette.BrightText))
+        categoryItem.setBackground(palette.brush(QtGui.QPalette.Normal, QtGui.QPalette.Dark))
+
+    @staticmethod
+    def setCategoryItemFontBold(categoryItem, value):
+        font = categoryItem.font()
+
+        if font.bold() == value:
+            return
+
+        font.setBold(value)
+        categoryItem.setFont(font)
 
     def createChildRows(self):
         for prop in self.category.properties.values():
@@ -389,6 +409,8 @@ class PropertyTreeView(QtGui.QTreeView):
         self.setRequiredOptions()
         self.setOptimalDefaults()
 
+        self.originalBackgroundColour = QtGui.QColor(213, 243, 233)
+
     def setRequiredOptions(self):
         # We work with rows, not columns
         self.setAllColumnsShowFocus(True)
@@ -459,11 +481,54 @@ class PropertyTreeView(QtGui.QTreeView):
 
         super(PropertyTreeView, self).currentChanged(currentIndex, previousIndex)
 
-    def drawRow(self, painter, option, index):
-        """Draws grid lines.
+    @staticmethod
+    def paintAlternatingRowBackground(treeView, originalBackgroundColour, painter, option, index):
+        """ Chooses and draws an alternating background colours for an item in a QTreeView. The colour
+        is chosen depending on the numbers of top-level elements (interpreted as categories) before the current item.
 
-        Yep, that's all it does.
+        :param treeView: QtGui.QTreeView
+        :param originalBackgroundColour: QtGui.QColor
+        :param painter:
+        :param option:
+        :param index:
+        :return:
         """
+
+        # Check if we draw and odd or even element, starting with the element after the category
+        aboveIndicesCount = 0
+        aboveIndex = treeView.indexAbove(index)
+        while aboveIndex.isValid() and aboveIndex.parent().isValid():
+            aboveIndicesCount += 1
+            aboveIndex = treeView.indexAbove(aboveIndex)
+
+        # We check how many categories there are before this element
+        categoryCount = -1
+        aboveIndex = treeView.indexAbove(index)
+        while aboveIndex.isValid():
+            if not aboveIndex.parent().isValid():
+                categoryCount += 1
+            aboveIndex = treeView.indexAbove(aboveIndex)
+
+        # We use a background colour with a hue depending on the category of this item
+        backgroundColour = originalBackgroundColour.toHsv()
+        newHue = backgroundColour.hue() + categoryCount * 45
+        backgroundColour.setHsv(newHue, backgroundColour.saturation(), backgroundColour.value())
+
+        # if this is an odd element after the category, we choose an alternative colour
+        if aboveIndicesCount % 2 == 1:
+            backgroundColour = backgroundColour.lighter(112)
+
+        # Draw the background for the elements
+        painter.fillRect(option.rect, backgroundColour)
+        option.palette.setBrush(QtGui.QPalette.Base, backgroundColour)
+        option.palette.setBrush(QtGui.QPalette.AlternateBase, backgroundColour)
+
+    def drawRow(self, painter, option, index):
+        """Draws grid lines and draws alternating background colours, depending on the category.
+        """
+        self.paintAlternatingRowBackground(self, self.originalBackgroundColour, painter, option, index)
+
+        # Calling the regular draw function
         super(PropertyTreeView, self).drawRow(painter, option, index)
 
         # get color for grid lines from the style
@@ -474,14 +539,15 @@ class PropertyTreeView(QtGui.QTreeView):
         gridPen = QtGui.QPen(gridColor)
         # x coordinate to draw the vertical line (between the first and the second column)
         colX = self.columnViewportPosition(1) - 1
-        # do not draw verticals on spanned rows (i.e. categories)
-        drawVertical = not self.isFirstColumnSpanned(index.row(), index.parent())
 
         # save painter state so we can leave it as it was
         painter.save()
         painter.setPen(gridPen)
+        # Check if this is a category ( spanning the whole row )
+        isCategory = self.isFirstColumnSpanned(index.row(), index.parent())
+        # do not draw verticals on spanned rows (i.e. categories)
         painter.drawLine(option.rect.x(), option.rect.bottom(), option.rect.right(), option.rect.bottom())
-        if drawVertical:
+        if not isCategory:
             painter.drawLine(colX, option.rect.y(), colX, option.rect.bottom())
         # aaaand restore
         painter.restore()

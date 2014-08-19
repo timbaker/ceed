@@ -546,6 +546,7 @@ class WidgetHierarchyTreeView(QtGui.QTreeView):
             if item.manipulator is not None:
                 item.setLocked(locked, recursive)
 
+
 class HierarchyDockWidget(QtGui.QDockWidget):
     """Displays and manages the widget hierarchy. Contains the WidgetHierarchyTreeWidget.
     """
@@ -579,7 +580,8 @@ class HierarchyDockWidget(QtGui.QDockWidget):
     def refresh(self):
         """Refreshes the entire hierarchy completely from scratch"""
 
-        self.setRootWidgetManipulator(self.rootWidgetManipulator)
+        # this will resynchronise the entire model
+        self.model.setRootManipulator(self.rootWidgetManipulator)
 
     def keyReleaseEvent(self, event):
         if event.key() == QtCore.Qt.Key_Delete:
@@ -631,6 +633,7 @@ class WidgetMultiPropertyWrapper(pt.properties.MultiPropertyWrapper):
 
         return False
 
+
 class CEGUIWidgetPropertyManager(CEGUIPropertyManager):
     """Customises the CEGUIPropertyManager by binding to a 'visual'
     so it can manipulate the widgets via undo commands.
@@ -643,7 +646,7 @@ class CEGUIWidgetPropertyManager(CEGUIPropertyManager):
         self.visual = visual
 
     def createProperty(self, ceguiProperty, ceguiSets):
-        prop = super(CEGUIWidgetPropertyManager, self).createProperty(ceguiProperty, ceguiSets, WidgetMultiPropertyWrapper)
+        prop = super(CEGUIWidgetPropertyManager, self).createProperty(ceguiProperty, ceguiSets, self.propertyMap, WidgetMultiPropertyWrapper)
         prop.ceguiProperty = ceguiProperty
         prop.ceguiSets = ceguiSets
         prop.visual = self.visual
@@ -655,7 +658,7 @@ class CEGUIWidgetPropertyManager(CEGUIPropertyManager):
 
         # sort categories by name but keep some special categories on top
         def getSortKey(t):
-            name, _  = t
+            name, _ = t
 
             if name == "Element":
                 return "000Element"
@@ -832,6 +835,8 @@ class EditingScene(cegui_widgethelpers.GraphicsScene):
         self.clear()
 
         self.rootManipulator = manipulator
+        # root manipulator changed, perform a full update
+        self.rootManipulator.updateFromWidget(True)
 
         if self.rootManipulator is not None:
             self.addItem(self.rootManipulator)
@@ -982,6 +987,35 @@ class EditingScene(cegui_widgethelpers.GraphicsScene):
             cmd = undo.RoundSizeCommand(self.visual, widgetPaths, oldPositions, oldSizes)
             self.visual.tabbedEditor.undoStack.push(cmd)
 
+    def moveSelectedWidgetsInParentWidgetLists(self, delta):
+        widgetPaths = []
+
+        selection = self.selectedItems()
+        for item in selection:
+            if not isinstance(item, widgethelpers.Manipulator):
+                continue
+
+            if not isinstance(item.parentItem(), widgethelpers.Manipulator):
+                continue
+
+            if not isinstance(item.parentItem().widget, PyCEGUI.SequentialLayoutContainer):
+                continue
+
+            potentialPosition = item.parentItem().widget.getPositionOfChild(item.widget) + delta
+            if potentialPosition < 0 or potentialPosition > item.parentItem().widget.getChildCount() - 1:
+                continue
+
+            widgetPath = item.widget.getNamePath()
+            widgetPaths.append(widgetPath)
+
+        # TODO: We currently only support moving one widget at a time.
+        #       Fixing this involves sorting the widgets by their position in
+        #       the parent widget and then either working from the "right" side
+        #       if delta > 0 or from the left side if delta < 0.
+        if len(widgetPaths) == 1:
+            cmd = undo.MoveInParentWidgetListCommand(self.visual, widgetPaths, delta)
+            self.visual.tabbedEditor.undoStack.push(cmd)
+
     def slot_selectionChanged(self):
         selection = self.selectedItems()
 
@@ -999,17 +1033,29 @@ class EditingScene(cegui_widgethelpers.GraphicsScene):
             if wdt is not None and wdt not in sets:
                 sets.append(wdt)
 
-        self.visual.propertiesDockWidget.inspector.setPropertySets(sets)
+        self.visual.propertiesDockWidget.inspector.setSource(sets)
+
+        def ensureParentIsExpanded(view, treeItem):
+            view.expand(treeItem.index())
+
+            if treeItem.parent():
+                ensureParentIsExpanded(view, treeItem.parent())
 
         # we always sync the properties dock widget, we only ignore the hierarchy synchro if told so
         if not self.ignoreSelectionChanges:
             self.visual.hierarchyDockWidget.ignoreSelectionChanges = True
 
             self.visual.hierarchyDockWidget.treeView.clearSelection()
+            lastTreeItem = None
             for item in selection:
                 if isinstance(item, widgethelpers.Manipulator):
                     if hasattr(item, "treeItem") and item.treeItem is not None:
                         self.visual.hierarchyDockWidget.treeView.selectionModel().select(item.treeItem.index(), QtGui.QItemSelectionModel.Select)
+                        ensureParentIsExpanded(self.visual.hierarchyDockWidget.treeView, item.treeItem)
+                        lastTreeItem = item.treeItem
+
+            if lastTreeItem is not None:
+                self.visual.hierarchyDockWidget.treeView.scrollTo(lastTreeItem.index())
 
             self.visual.hierarchyDockWidget.ignoreSelectionChanges = False
 
@@ -1155,6 +1201,8 @@ class VisualEditing(QtGui.QWidget, multi.EditMode):
         self.setupToolBar()
         self.hierarchyDockWidget.treeView.setupContextMenu()
 
+        self.oldViewState = None
+
     def setupActions(self):
         self.connectionGroup = action.ConnectionGroup(action.ActionManager.instance)
 
@@ -1185,22 +1233,9 @@ class VisualEditing(QtGui.QWidget, multi.EditMode):
         self.connectionGroup.add("layout/round_position", receiver = lambda: self.scene.roundPositionOfSelectedWidgets())
         self.connectionGroup.add("layout/round_size", receiver = lambda: self.scene.roundSizeOfSelectedWidgets())
 
-        # general
-        self.renameWidgetAction = action.getAction("layout/rename")
-        self.connectionGroup.add(self.renameWidgetAction, receiver = lambda: self.hierarchyDockWidget.treeView.editSelectedWidgetName())
-
-        self.lockWidgetAction = action.getAction("layout/lock_widget")
-        self.connectionGroup.add(self.lockWidgetAction, receiver = lambda: self.hierarchyDockWidget.treeView.setSelectedWidgetsLocked(True))
-        self.unlockWidgetAction = action.getAction("layout/unlock_widget")
-        self.connectionGroup.add(self.unlockWidgetAction, receiver = lambda: self.hierarchyDockWidget.treeView.setSelectedWidgetsLocked(False))
-        self.recursivelyLockWidgetAction = action.getAction("layout/recursively_lock_widget")
-        self.connectionGroup.add(self.recursivelyLockWidgetAction, receiver = lambda: self.hierarchyDockWidget.treeView.setSelectedWidgetsLocked(True, True))
-        self.recursivelyUnlockWidgetAction = action.getAction("layout/recursively_unlock_widget")
-        self.connectionGroup.add(self.recursivelyUnlockWidgetAction, receiver = lambda: self.hierarchyDockWidget.treeView.setSelectedWidgetsLocked(False, True))
-
-        self.copyNamePathAction = action.getAction("layout/copy_widget_path")
-        self.connectionGroup.add(self.copyNamePathAction, receiver = lambda: self.hierarchyDockWidget.treeView.copySelectedWidgetPaths())
-
+        # moving in parent widget list
+        self.connectionGroup.add("layout/move_backward_in_parent_list", receiver = lambda: self.scene.moveSelectedWidgetsInParentWidgetLists(-1))
+        self.connectionGroup.add("layout/move_forward_in_parent_list", receiver = lambda: self.scene.moveSelectedWidgetsInParentWidgetLists(1))
 
     def setupToolBar(self):
         self.toolBar = QtGui.QToolBar("Layout")
@@ -1222,6 +1257,9 @@ class VisualEditing(QtGui.QWidget, multi.EditMode):
         self.toolBar.addAction(action.getAction("layout/normalise_size"))
         self.toolBar.addAction(action.getAction("layout/round_position"))
         self.toolBar.addAction(action.getAction("layout/round_size"))
+        self.toolBar.addSeparator() # ---------------------------
+        self.toolBar.addAction(action.getAction("layout/move_backward_in_parent_list"))
+        self.toolBar.addAction(action.getAction("layout/move_forward_in_parent_list"))
 
 
     def rebuildEditorMenu(self, editorMenu):
@@ -1242,6 +1280,9 @@ class VisualEditing(QtGui.QWidget, multi.EditMode):
         editorMenu.addAction(action.getAction("layout/normalise_size"))
         editorMenu.addAction(action.getAction("layout/round_position"))
         editorMenu.addAction(action.getAction("layout/round_size"))
+        editorMenu.addSeparator() # ---------------------------
+        editorMenu.addAction(action.getAction("layout/move_backward_in_parent_list"))
+        editorMenu.addAction(action.getAction("layout/move_forward_in_parent_list"))
         editorMenu.addSeparator() # ---------------------------
         editorMenu.addAction(self.focusPropertyInspectorFilterBoxAction)
 
@@ -1311,9 +1352,15 @@ class VisualEditing(QtGui.QWidget, multi.EditMode):
         # connect all our actions
         self.connectionGroup.connectAll()
 
+        if self.oldViewState is not None:
+            mainwindow.MainWindow.instance.ceguiContainerWidget.setViewState(self.oldViewState)
+
         super(VisualEditing, self).showEvent(event)
 
     def hideEvent(self, event):
+        # remember our view transform
+        self.oldViewState = mainwindow.MainWindow.instance.ceguiContainerWidget.getViewState()
+
         # disconnected all our actions
         self.connectionGroup.disconnectAll()
 

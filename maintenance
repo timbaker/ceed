@@ -142,7 +142,7 @@ def archive():
     os.mkdir(target_temp_directory_path)
 
     shutil.copytree("bin", os.path.join(target_temp_directory_path, "bin"),
-                    ignore = shutil.ignore_patterns("*~", "*.orig", "runwrapper.sh"))
+                    ignore = shutil.ignore_patterns("*~", "*.orig"))
     shutil.copytree("ceed", os.path.join(target_temp_directory_path, "ceed"),
                     ignore = shutil.ignore_patterns("*~", "*.orig", "*.pyc", "*.pyo"))
     shutil.copytree("data", os.path.join(target_temp_directory_path, "data"),
@@ -155,6 +155,15 @@ def archive():
     shutil.copy("AUTHORS", target_temp_directory_path)
     shutil.copy("LICENSE", target_temp_directory_path)
     shutil.copy("README.md", target_temp_directory_path)
+
+    shutil.copy("cx_Freezer.py", target_temp_directory_path)
+    shutil.copy("setup.py", target_temp_directory_path)
+
+    shutil.copy("generate-api-ref", target_temp_directory_path)
+    shutil.copy("maintenance", target_temp_directory_path)
+    shutil.copy("perform-static-analysis", target_temp_directory_path)
+    shutil.copy("pylint.cfg", target_temp_directory_path)
+    shutil.copy("run_tests", target_temp_directory_path)
 
     import tarfile
     target_archive_path = os.path.join(temp_directory_path, "ceed-%s.tar.bz2" % (version.CEED))

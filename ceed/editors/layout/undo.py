@@ -288,7 +288,14 @@ class CreateCommand(commands.UndoCommand):
         if result.widget.getSize() == PyCEGUI.USize(PyCEGUI.UDim(0, 0), PyCEGUI.UDim(0, 0)):
             result.widget.setSize(PyCEGUI.USize(PyCEGUI.UDim(0, 50), PyCEGUI.UDim(0, 50)))
 
-        result.updateFromWidget()
+        # the parent may want to reposition or resize its new child and may be
+        # doing lazy updates - i.e. a layout container
+        if result.parentItem() and isinstance(result.parentItem(), widgethelpers.Manipulator):
+            result.parentItem().updateFromWidget(True)
+
+        else:
+            result.updateFromWidget(True)
+
         # ensure this isn't obscured by it's parent
         result.moveToFront()
 
@@ -571,8 +578,9 @@ class ReparentCommand(commands.UndoCommand):
             # and sort out the manipulators
             widgetManipulator.setParentItem(oldParentManipulator)
 
-            # update sizes since relative sizes can alter these when the parent's size changes
-            widgetManipulator.updateFromWidget()
+            # the parent may want to reposition or resize its new child and may be
+            # doing lazy updates - i.e. a layout container
+            oldParentManipulator.updateFromWidget(True)
 
             i += 1
 
@@ -609,8 +617,9 @@ class ReparentCommand(commands.UndoCommand):
             # and sort out the manipulators
             widgetManipulator.setParentItem(newParentManipulator)
 
-            # update sizes since relative sizes can alter these when the parent's size changes
-            widgetManipulator.updateFromWidget()
+            # the parent may want to reposition or resize its new child and may be
+            # doing lazy updates - i.e. a layout container
+            newParentManipulator.updateFromWidget(True)
 
             i += 1
 
@@ -660,7 +669,7 @@ class PasteCommand(commands.UndoCommand):
 
             if wasRootWidget:
                 # this was a root widget being deleted, handle this accordingly
-                self.visual.setRootWidgetManipulator(None)
+                self.visual.setWidgetLookManipulator(None)
 
         self.visual.notifyWidgetManipulatorsRemoved(widgetPaths)
 
@@ -673,6 +682,10 @@ class PasteCommand(commands.UndoCommand):
             serialisationData.setParentPath(self.targetWidgetPath)
 
             serialisationData.reconstruct(self.visual.scene.rootManipulator)
+
+        # Update the topmost parent widget recursively to get possible resize or
+        # repositions of the pasted widgets into the manipulator data.
+        targetManipulator.updateFromWidget(True)
 
         self.visual.hierarchyDockWidget.refresh()
 
@@ -921,7 +934,11 @@ class RoundPositionCommand(MoveCommand):
         return idbase + 15
 
     def mergeWith(self, cmd):
-        return False
+        # merge if the new round position command will apply to the same widget
+        if self.widgetPaths == cmd.widgetPaths:
+            return True
+        else:
+            return False
 
 
 class RoundSizeCommand(ResizeCommand):
@@ -952,4 +969,69 @@ class RoundSizeCommand(ResizeCommand):
         return idbase + 16
 
     def mergeWith(self, cmd):
+        # merge if the new round size command will apply to the same widget
+        if self.widgetPaths == cmd.widgetPaths:
+            return True
+        else:
+            return False
+
+class MoveInParentWidgetListCommand(commands.UndoCommand):
+    def __init__(self, visual, widgetPaths, delta):
+        super(MoveInParentWidgetListCommand, self).__init__()
+
+        self.visual = visual
+        self.widgetPaths = widgetPaths
+        self.delta = delta
+
+        self.refreshText()
+
+    def refreshText(self):
+        if len(self.widgetPaths) == 1:
+            self.setText("Move '%s' by %i in parent widget list" % (self.widgetPaths[0], self.delta))
+        else:
+            self.setText("Move %i widgets by %i in parent widget list" % (len(self.widgetPaths), self.delta))
+
+    def id(self):
+        return idbase + 17
+
+    def mergeWith(self, cmd):
+        if self.widgetPaths == cmd.widgetPaths:
+            self.delta += cmd.delta
+            self.refreshText()
+            return True
+
         return False
+
+    def undo(self):
+        super(MoveInParentWidgetListCommand, self).undo()
+
+        if self.delta != 0:
+            for widgetPath in reversed(self.widgetPaths):
+                widgetManipulator = self.visual.scene.getManipulatorByPath(widgetPath)
+                parentManipulator = widgetManipulator.parentItem()
+                assert(isinstance(parentManipulator, widgethelpers.Manipulator))
+                assert(isinstance(parentManipulator.widget, PyCEGUI.SequentialLayoutContainer))
+
+                oldPosition = parentManipulator.widget.getPositionOfChild(widgetManipulator.widget)
+                newPosition = oldPosition - self.delta
+                parentManipulator.widget.swapChildPositions(oldPosition, newPosition)
+                assert(newPosition == parentManipulator.widget.getPositionOfChild(widgetManipulator.widget))
+
+                parentManipulator.updateFromWidget(True)
+
+    def redo(self):
+        if self.delta != 0:
+            for widgetPath in self.widgetPaths:
+                widgetManipulator = self.visual.scene.getManipulatorByPath(widgetPath)
+                parentManipulator = widgetManipulator.parentItem()
+                assert(isinstance(parentManipulator, widgethelpers.Manipulator))
+                assert(isinstance(parentManipulator.widget, PyCEGUI.SequentialLayoutContainer))
+
+                oldPosition = parentManipulator.widget.getPositionOfChild(widgetManipulator.widget)
+                newPosition = oldPosition + self.delta
+                parentManipulator.widget.swapChildPositions(oldPosition, newPosition)
+                assert(newPosition == parentManipulator.widget.getPositionOfChild(widgetManipulator.widget))
+
+                parentManipulator.updateFromWidget(True)
+
+        super(MoveInParentWidgetListCommand, self).redo()
