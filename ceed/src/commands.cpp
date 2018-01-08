@@ -19,3 +19,42 @@
 */
 
 #include "commands.h"
+
+#include <QIcon>
+#include <QWidget>
+#include <QUndoView>
+#include <QVBoxLayout>
+
+namespace CEED {
+namespace commands {
+
+UndoViewer::UndoViewer()
+    : QDockWidget()
+{
+    setObjectName("Undo Viewer dock widget");
+    setWindowTitle("Undo Viewer");
+
+    // main undo view
+    m_view = new QUndoView();
+    m_view->setCleanIcon(QIcon("icons/clean_undo_state.png"));
+    // root widget and layout
+    QWidget* contentsWidget = new QWidget();
+    QVBoxLayout* contentsLayout = new QVBoxLayout();
+    contentsWidget->setLayout(contentsLayout);
+    QMargins margins = contentsLayout->contentsMargins();
+    margins.setTop(0);
+    contentsLayout->setContentsMargins(margins);
+
+    contentsLayout->addWidget(m_view);
+    setWidget(contentsWidget);
+}
+
+void UndoViewer::setUndoStack(QUndoStack *stack)
+{
+    m_view->setStack(stack);
+    // if stack is None this effectively disables the entire dock widget to improve UX
+    setEnabled(stack != nullptr);
+}
+
+} // namespace commands
+} // namespace CEED

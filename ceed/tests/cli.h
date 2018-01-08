@@ -23,13 +23,15 @@
 
 #include "CEEDBase.h"
 
+#if 0 // TODO
+
 import unittest
 import subprocess
 import os
 import tempfile
 
 class test_CommandLineTools : public unittest.TestCase
-    def setUp(self):
+    def setUp()
         self.basePath = os.path.join(os.path.dirname(__file__), "..", "..")
 
     def _test_run(self, cliTool, args):
@@ -42,14 +44,15 @@ class test_CommandLineTools : public unittest.TestCase
         except subprocess.CalledProcessError as e:
             self.fail(msg = "%s\n\nException message: %s" % (e.output, e))
 
-    def test_ceed_mic(self):
+    def test_ceed_mic()
         sampleMI = os.path.join(self.basePath, "data", "samples", "Basic.meta-imageset")
         self._test_run("ceed-mic", [sampleMI])
 
-    def test_ceed_migrate(self):
+    def test_ceed_migrate()
         layoutPath = os.path.join(self.basePath, "ceed/tests/compatibility/layout_data", "VanillaWindows_0_7.layout")
         tempFile = tempfile.NamedTemporaryFile()
 
         self._test_run("ceed-migrate", ["--sourceType", "CEGUI layout 3", "layout", layoutPath, tempFile.name])
+#endif // TODO
 
 #endif

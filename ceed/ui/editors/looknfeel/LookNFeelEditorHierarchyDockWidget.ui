@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>LookNFeelEditorHierarchyDockWidget</class>
+ <class>LookNFeelHierarchyDockWidget</class>
  <widget class="QDockWidget" name="LookNFeelHierarchyDockWidget">
   <property name="enabled">
    <bool>false</bool>
@@ -91,7 +91,7 @@
      </layout>
     </item>
     <item>
-     <widget class="LookNFeelHierarchyTreeView" name="treeView">
+     <widget class="CEED::editors::looknfeel::hierarchy_tree_view::LookNFeelHierarchyTreeView" name="treeView">
       <property name="showDropIndicator" stdset="0">
        <bool>false</bool>
       </property>
@@ -126,9 +126,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>LookNFeelHierarchyTreeView</class>
+   <class>CEED::editors::looknfeel::hierarchy_tree_view::LookNFeelHierarchyTreeView</class>
    <extends>QTreeView</extends>
-   <header>ceed.editors.looknfeel.hierarchy_tree_view</header>
+   <header>editors/looknfeel/hierarchy_tree_view.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

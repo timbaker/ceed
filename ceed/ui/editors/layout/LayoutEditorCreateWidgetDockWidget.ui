@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>LayoutEditorCreateWidgetDockWidget</class>
- <widget class="QDockWidget" name="CreateWidgetDockWidget">
+ <widget class="QDockWidget" name="LayoutEditorCreateWidgetDockWidget">
   <property name="enabled">
    <bool>false</bool>
   </property>
@@ -22,7 +22,7 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="WidgetTypeTreeWidget" name="tree">
+     <widget class="CEED::editors::layout::visual::WidgetTypeTreeWidget" name="tree">
       <property name="toolTip">
        <string>Drag to the layout to create</string>
       </property>
@@ -38,9 +38,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>WidgetTypeTreeWidget</class>
+   <class>CEED::editors::layout::visual::WidgetTypeTreeWidget</class>
    <extends>QTreeWidget</extends>
-   <header>ceed.editors.layout.visual</header>
+   <header>editors/layout/editor_layout_visual.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

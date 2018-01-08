@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>LookNFeelEditorWidgetLookSelectorWidget</class>
- <widget class="QDockWidget" name="LookNFeelWidgetLookSelector">
+ <widget class="QDockWidget" name="LookNFeelEditorWidgetLookSelectorWidget">
   <property name="enabled">
    <bool>false</bool>
   </property>
@@ -10,13 +10,13 @@
     <x>0</x>
     <y>0</y>
     <width>386</width>
-    <height>90</height>
+    <height>92</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>336</width>
-    <height>90</height>
+    <height>92</height>
    </size>
   </property>
   <property name="windowTitle">

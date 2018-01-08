@@ -23,6 +23,8 @@
 
 #include "CEEDBase.h"
 
+#if 0 // TODO
+
 import unittest
 
 from ceed.compatibility.layout import cegui
@@ -31,10 +33,10 @@ from xml.etree import cElementTree as ElementTree
 import os
 
 class test_Layout3To4Layer : public unittest.TestCase
-    def setUp(self):
+    def setUp()
         self.layer = cegui.Layout3To4Layer()
 
-    def test_transformAttribute(self):
+    def test_transformAttribute()
         element = ElementTree.Element("Window")
         element.set("Name", "name_test")
 
@@ -42,7 +44,7 @@ class test_Layout3To4Layer : public unittest.TestCase
         self.assertEqual(element.get("name"), "name_test")
         self.assertEqual(element.get("Name"), None)
 
-    def test_convertToRelativeNames(self):
+    def test_convertToRelativeNames()
         element = ElementTree.Element("Window")
         element.set("Name", "Root")
 
@@ -57,7 +59,7 @@ class test_Layout3To4Layer : public unittest.TestCase
         self.assertEqual(childElement.get("Name"), "Child")
 
 class test_Layout3and4Layers : public unittest.TestCase
-    def setUp(self):
+    def setUp()
         self.maxDiff = None
 
         self.layer3to4 = cegui.Layout3To4Layer()
@@ -78,13 +80,15 @@ class test_Layout3and4Layers : public unittest.TestCase
         finally:
             os.chdir(previousCwd)
 
-    def test_tabPage1(self):
+    def test_tabPage1()
         self._test_conversion("TabPage1")
 
-    def test_textDemo(self):
+    def test_textDemo()
         self._test_conversion("TextDemo")
 
-    def test_vanillaWindows(self):
+    def test_vanillaWindows()
         self._test_conversion("VanillaWindows")
+
+#endif // TODO
 
 #endif

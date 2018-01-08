@@ -19,3 +19,45 @@
 */
 
 #include "messages.h"
+
+
+namespace CEED {
+namespace messages {
+
+void warning(application::Application *app, QWidget *parentWidget, const QString &title, const QString &message, const QString &token_)
+{
+    if (app == nullptr)
+        app = static_cast<application::Application*>(QApplication::instance());
+
+    QString token = token_;
+    if (token.isEmpty()) {
+        QByteArray hash = QCryptographicHash::hash((title + message).toUtf8(), QCryptographicHash::Sha1).toHex();
+        token = QString::fromLocal8Bit(hash.data(), hash.length());
+    }
+
+    QString qsettingsKey = QString("messages/never_show_warning_%1").arg(token);
+
+    if (app->m_qsettings->value(qsettingsKey, false).toBool()) {
+        // user chose to never show this type of dialog again
+        return;
+    }
+
+    QMessageBox dialog(parentWidget);
+
+    dialog.setIcon(QMessageBox::Icon::Warning);
+    dialog.setWindowTitle(title);
+    dialog.setText(message);
+
+    dialog.addButton("Ok", QMessageBox::ButtonRole::AcceptRole);
+    dialog.addButton("Never show again", QMessageBox::ButtonRole::RejectRole);
+
+    int response = dialog.exec();
+
+    if (response == QMessageBox::ButtonRole::RejectRole) {
+        app->m_qsettings->setValue(qsettingsKey, true);
+    }
+}
+
+
+} // namespace messages
+} // namespace CEED

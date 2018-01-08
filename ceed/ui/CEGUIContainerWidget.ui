@@ -17,11 +17,20 @@
    <property name="spacing">
     <number>0</number>
    </property>
-   <property name="margin">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
     <number>0</number>
    </property>
    <item>
-    <widget class="GraphicsView" name="view">
+    <widget class="CEED::cegui::qtgraphics::GraphicsView" name="view">
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
      </property>
@@ -150,8 +159,8 @@
          <string/>
         </property>
         <property name="icon">
-         <iconset>
-          <normaloff>icons/cegui/debug_info.png</normaloff>icons/cegui/debug_info.png</iconset>
+         <iconset resource="../../ceed.qrc">
+          <normaloff>:/icons/cegui/debug_info.png</normaloff>:/icons/cegui/debug_info.png</iconset>
         </property>
         <property name="autoDefault">
          <bool>false</bool>
@@ -171,11 +180,13 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>GraphicsView</class>
+   <class>CEED::cegui::qtgraphics::GraphicsView</class>
    <extends>QGraphicsView</extends>
-   <header>ceed.cegui.qtgraphics</header>
+   <header>cegui/cegui_qtgraphics.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../../ceed.qrc"/>
+ </resources>
  <connections/>
 </ui>

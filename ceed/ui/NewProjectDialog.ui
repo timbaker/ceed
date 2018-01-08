@@ -65,7 +65,7 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="FileLineEdit" name="projectFilePath" native="true">
+       <widget class="CEED::qtwidgets::FileLineEdit" name="projectFilePath" native="true">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -113,9 +113,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>FileLineEdit</class>
+   <class>CEED::qtwidgets::FileLineEdit</class>
    <extends>QWidget</extends>
-   <header>ceed.qtwidgets</header>
+   <header>qtwidgets.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

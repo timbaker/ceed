@@ -19,3 +19,61 @@
 */
 
 #include "application.h"
+
+#include "error.h"
+#include "mainwindow.h"
+
+#include <QPixmap>
+#include <QSettings>
+
+namespace CEED {
+namespace application {
+
+SplashScreen::SplashScreen()
+    : QSplashScreen(QPixmap("images/splashscreen.png"))
+{
+    setWindowModality(Qt::ApplicationModal);
+    setWindowFlags(Qt::SplashScreen | Qt::WindowStaysOnTopHint);
+    showMessage(QString("version: %1").arg(version::CEED), Qt::AlignTop | Qt::AlignRight, Qt::GlobalColor::white);
+}
+
+/////
+
+Application::Application(int &argc, char **argv, int flags)
+    : QApplication(argc, argv, flags)
+    , m_splash(nullptr)
+{
+    m_qsettings = new QSettings("CEGUI", "CEED");
+
+    m_settings = new settings::Settings(m_qsettings);
+    // download all values from the persistence store
+    m_settings->download();
+
+    bool showSplash = m_settings->getEntry("global/app/show_splash")->m_value.toBool();
+    if (showSplash) {
+        m_splash = new SplashScreen();
+        m_splash->show();
+
+        // this ensures that the splash screen is shown on all platforms
+        processEvents();
+    }
+
+    setOrganizationName("CEGUI");
+    setOrganizationDomain("cegui.org.uk");
+    setApplicationName("CEED - CEGUI editor");
+    setApplicationVersion(version::CEED);
+
+    m_mainWindow = new mainwindow::MainWindow(*this);
+    m_mainWindow->show();
+    m_mainWindow->raise();
+    if (showSplash) {
+        m_splash->finish(m_mainWindow);
+    }
+
+    // - Truncate exception log, if it exists.
+    m_errorHandler = new error::ErrorHandler(m_mainWindow);
+    m_errorHandler->installExceptionHook();
+}
+
+} // namespace application
+} // namespace CEED

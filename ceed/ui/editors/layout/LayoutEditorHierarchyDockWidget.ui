@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>LayoutEditorHierarchyDockWidget</class>
- <widget class="QDockWidget" name="HierarchyDockWidget">
+ <widget class="QDockWidget" name="LayoutEditorHierarchyDockWidget">
   <property name="enabled">
    <bool>false</bool>
   </property>
@@ -34,16 +34,16 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="WidgetHierarchyTreeView" name="treeView">
+     <widget class="CEED::editors::layout::visual::WidgetHierarchyTreeView" name="treeView">
       <property name="styleSheet">
        <string notr="true">QTreeView::indicator:checked
 {
-	image: url(&quot;icons/layout_editing/manipulator_locked.png&quot;);
+	image: url(&quot;:icons/layout_editing/manipulator_locked.png&quot;);
 }
 
 QTreeView::indicator:unchecked
 {
-	image: url(&quot;icons/layout_editing/manipulator_unlocked.png&quot;);
+	image: url(&quot;:icons/layout_editing/manipulator_unlocked.png&quot;);
 }</string>
       </property>
       <property name="dragEnabled">
@@ -83,9 +83,9 @@ QTreeView::indicator:unchecked
  </widget>
  <customwidgets>
   <customwidget>
-   <class>WidgetHierarchyTreeView</class>
+   <class>CEED::editors::layout::visual::WidgetHierarchyTreeView</class>
    <extends>QTreeView</extends>
-   <header>ceed.editors.layout.visual</header>
+   <header>editors/layout/editor_layout_visual.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

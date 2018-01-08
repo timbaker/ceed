@@ -24,8 +24,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>562</width>
-        <height>685</height>
+        <width>563</width>
+        <height>577</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -46,7 +46,7 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="FileLineEdit" name="baseDirectory" native="true"/>
+           <widget class="CEED::qtwidgets::FileLineEdit" name="baseDirectory" native="true"/>
           </item>
           <item row="1" column="1">
            <widget class="QLabel" name="label_10">
@@ -189,11 +189,20 @@ p, li { white-space: pre-wrap; }
              <property name="spacing">
               <number>0</number>
              </property>
-             <property name="margin">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
               <number>0</number>
              </property>
              <item>
-              <widget class="FileLineEdit" name="resourceDirectory" native="true"/>
+              <widget class="CEED::qtwidgets::FileLineEdit" name="resourceDirectory" native="true"/>
              </item>
              <item>
               <widget class="QPushButton" name="resourceDirectoryApplyButton">
@@ -236,7 +245,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="6" column="1">
-           <widget class="FileLineEdit" name="imagesetsPath" native="true"/>
+           <widget class="CEED::qtwidgets::FileLineEdit" name="imagesetsPath" native="true"/>
           </item>
           <item row="7" column="0">
            <widget class="QLabel" name="label_5">
@@ -246,7 +255,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="7" column="1">
-           <widget class="FileLineEdit" name="fontsPath" native="true"/>
+           <widget class="CEED::qtwidgets::FileLineEdit" name="fontsPath" native="true"/>
           </item>
           <item row="8" column="0">
            <widget class="QLabel" name="label_7">
@@ -256,7 +265,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="8" column="1">
-           <widget class="FileLineEdit" name="looknfeelsPath" native="true"/>
+           <widget class="CEED::qtwidgets::FileLineEdit" name="looknfeelsPath" native="true"/>
           </item>
           <item row="9" column="0">
            <widget class="QLabel" name="label_6">
@@ -266,7 +275,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="9" column="1">
-           <widget class="FileLineEdit" name="schemesPath" native="true"/>
+           <widget class="CEED::qtwidgets::FileLineEdit" name="schemesPath" native="true"/>
           </item>
           <item row="10" column="0">
            <widget class="QLabel" name="label_8">
@@ -276,7 +285,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="10" column="1">
-           <widget class="FileLineEdit" name="layoutsPath" native="true"/>
+           <widget class="CEED::qtwidgets::FileLineEdit" name="layoutsPath" native="true"/>
           </item>
           <item row="11" column="0">
            <widget class="QLabel" name="label_14">
@@ -286,7 +295,7 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="11" column="1">
-           <widget class="FileLineEdit" name="xmlSchemasPath" native="true"/>
+           <widget class="CEED::qtwidgets::FileLineEdit" name="xmlSchemasPath" native="true"/>
           </item>
           <item row="13" column="1">
            <widget class="Line" name="line">
@@ -335,9 +344,9 @@ p, li { white-space: pre-wrap; }
  </widget>
  <customwidgets>
   <customwidget>
-   <class>FileLineEdit</class>
+   <class>CEED::qtwidgets::FileLineEdit</class>
    <extends>QWidget</extends>
-   <header>ceed.qtwidgets</header>
+   <header>qtwidgets.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

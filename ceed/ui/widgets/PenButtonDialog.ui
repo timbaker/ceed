@@ -104,7 +104,7 @@
     <widget class="QGraphicsView" name="preview"/>
    </item>
    <item row="0" column="1">
-    <widget class="ColourButton" name="colour">
+    <widget class="CEED::qtwidgets::ColourButton" name="colour">
      <property name="text">
       <string>PushButton</string>
      </property>
@@ -114,9 +114,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>ColourButton</class>
+   <class>CEED::qtwidgets::ColourButton</class>
    <extends>QPushButton</extends>
-   <header>ceed.qtwidgets</header>
+   <header>qtwidgets.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
